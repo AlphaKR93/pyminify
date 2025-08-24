@@ -4698,10 +4698,12 @@
   status: passing
 - options:
     rename_globals: true
+    preserve_globals: [MultiPhaseExtensionModuleTests]
   status: passing
 - options:
     remove_literal_statements: true
     rename_globals: true
+    preserve_globals: [MultiPhaseExtensionModuleTests]
   status: passing
 /usr/local/lib/python3.14/test/test_importlib/extension/test_path_hook.py:
 - options: {}
@@ -6595,19 +6597,6 @@
     rename_globals: true
   status: passing
 /usr/local/lib/python3.14/test/test_pathlib/support/__init__.py:
-- options: {}
-  status: passing
-- options:
-    remove_literal_statements: true
-  status: passing
-- options:
-    rename_globals: true
-  status: passing
-- options:
-    remove_literal_statements: true
-    rename_globals: true
-  status: passing
-/usr/local/lib/python3.14/test/test_pdb.py:
 - options: {}
   status: passing
 - options:
@@ -9333,19 +9322,6 @@
     remove_literal_statements: true
     rename_globals: true
   status: passing
-/usr/local/lib/python3.14/test/test_zoneinfo/data/update_test_data.py:
-- options: {}
-  status: passing
-- options:
-    remove_literal_statements: true
-  status: passing
-- options:
-    rename_globals: true
-  status: passing
-- options:
-    remove_literal_statements: true
-    rename_globals: true
-  status: passing
 /usr/local/lib/python3.14/test/test_zoneinfo/test_zoneinfo_property.py:
 - options: {}
   status: passing
@@ -9367,10 +9343,12 @@
   status: passing
 - options:
     rename_globals: true
+    preserve_globals: [setUpModule]
   status: passing
 - options:
     remove_literal_statements: true
     rename_globals: true
+    preserve_globals: [setUpModule]
   status: passing
 /usr/local/lib/python3.14/test/test_zipfile64.py:
 - options: {}
@@ -9851,21 +9829,21 @@
   status: passing
 /usr/local/lib/python3.14/test/test_zoneinfo/test_zoneinfo.py:
 - options:
-    preserve_locals: [ZISubclass]
+    preserve_locals: [ZISubclass, dt, fold, offset]
   status: passing
 - options:
     remove_literal_statements: true
-    preserve_locals: [ZISubclass]
+    preserve_locals: [ZISubclass, dt, fold, offset]
   status: passing
 - options:
     rename_globals: true
-    preserve_locals: [ZISubclass]
+    preserve_locals: [ZISubclass, dt, fold, offset]
     preserve_globals: [ZONEINFO_DATA, ZONEINFO_DATA_V1, setUpModule, tearDownModule]
   status: passing
 - options:
     remove_literal_statements: true
     rename_globals: true
-    preserve_locals: [ZISubclass]
+    preserve_locals: [ZISubclass, dt, fold, offset]
     preserve_globals: [ZONEINFO_DATA, ZONEINFO_DATA_V1, setUpModule, tearDownModule]
   status: passing
 /usr/local/lib/python3.14/test/test_string/test_templatelib.py:
