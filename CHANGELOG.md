@@ -15,8 +15,6 @@ the minified code may only run with Python 3.12.
 ### Added
 - Python 3.14 support (work in progress), including:
   + PEP 750 Template strings (t-strings)
-  + Exception handling without parentheses
-  + PEP 649 Deferred annotation evaluation
 
 ## [3.0.0] - 2025-08-13
 
