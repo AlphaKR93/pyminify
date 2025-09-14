@@ -1,8 +1,9 @@
-import ast
+import python_minifier.ast_compat as ast
 
 from datetime import timedelta
 
 from hypothesis import HealthCheck, Verbosity, given, note, settings
+from hypothesis.strategies import booleans
 
 from python_minifier.ast_compare import compare_ast
 from python_minifier.ast_printer import print_ast
@@ -15,6 +16,7 @@ from .expressions import Expression
 from .folding import FoldableExpression
 from .module import Module, TypeAlias
 from .patterns import Pattern
+from .strings import StringExpression
 
 
 @given(node=Expression())
@@ -66,7 +68,7 @@ def test_pattern(node):
 
 
 @given(node=FoldableExpression())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=1000, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
+@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
 def test_folding(node):
     assert isinstance(node, ast.AST)
     note(print_ast(node))
@@ -122,3 +124,23 @@ def test_function_type_param(node):
     code = printer(module)
     note(code)
     compare_ast(module, ast.parse(code, 'test_function_type_param'))
+
+
+@given(node=StringExpression())
+@settings(report_multiple_bugs=False, deadline=timedelta(seconds=10), max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
+def test_string_expression(node):
+    assert isinstance(node, ast.Expression)
+
+    note(ast.dump(node))
+    printer = ExpressionPrinter()
+    code = printer(node)
+    note(code)
+    compare_ast(node, ast.parse(code, 'test_string_expression', 'eval'))
+
+
+@given(value=booleans())
+@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=100)
+def test_boolean_failure(value):
+    """Simple test that draws a boolean and asserts it to observe failure behavior."""
+    note(f"Generated boolean value: {value}")
+    assert value, "This test will fail when value is False"

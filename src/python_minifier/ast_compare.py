@@ -59,7 +59,7 @@ def compare_ast(l_ast, r_ast):
     if type(l_ast) != type(r_ast):
         raise CompareError(l_ast, r_ast, msg='Nodes do not match! %r != %r' % (l_ast, r_ast))
 
-    for field in set(l_ast._fields + r_ast._fields):
+    for field in sorted(set(l_ast._fields + r_ast._fields)):
 
         if field == 'kind' and isinstance(l_ast, ast.Constant):
             continue

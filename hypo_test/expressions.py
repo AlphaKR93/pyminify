@@ -1,4 +1,4 @@
-import ast
+import python_minifier.ast_compat as ast
 import keyword
 import math
 import string
@@ -25,16 +25,16 @@ from hypothesis.strategies import (
 
 comparison_operators = sampled_from(
     [
-        ast.Eq(),
+        ast.Eq(),      # Most common comparison
         ast.NotEq(),
-        ast.Lt(),
-        ast.LtE(),
+        ast.Lt(),      # Simple ordering
         ast.Gt(),
+        ast.LtE(),
         ast.GtE(),
-        ast.Is(),
-        ast.IsNot(),
-        ast.In(),
-        ast.NotIn()
+        ast.In(),      # Membership tests
+        ast.NotIn(),
+        ast.Is(),      # Identity tests (less common)
+        ast.IsNot()
     ]
 )
 
@@ -45,26 +45,45 @@ comparison_operators = sampled_from(
 def Num(draw) -> ast.AST:
     def to_node(n) -> ast.AST:
         if isinstance(n, int):
-            return ast.Num(n) if n >= 0 else ast.UnaryOp(ast.USub(), ast.Num(abs(n)))
+            return ast.Constant(value=n) if n >= 0 else ast.UnaryOp(ast.USub(), ast.Constant(value=abs(n)))
         elif isinstance(n, float):
-            return ast.Num(n) if math.copysign(1.0, n) > 0.0 else ast.UnaryOp(ast.USub(), ast.Num(abs(n)))
+            return ast.Constant(value=n) if math.copysign(1.0, n) > 0.0 else ast.UnaryOp(ast.USub(), ast.Constant(value=abs(n)))
         elif isinstance(n, complex):
             node = ast.parse(str(n), mode='eval')
             return node.body
 
         raise ValueError(n)
 
-    return to_node(draw(integers() | floats(allow_nan=False) | complex_numbers(allow_infinity=True, allow_nan=False)))
+    return to_node(draw(one_of(
+        integers(),  # Shrinks to 0
+        floats(allow_nan=False),  # Shrinks to 0.0
+        complex_numbers(allow_infinity=True, allow_nan=False)  # Most complex
+    )))
 
 
 @composite
-def Str(draw) -> ast.Str:
-    return ast.Str(''.join(draw(lists(characters(), min_size=0, max_size=3))))
+def Str(draw) -> ast.Constant:
+    # Choose between simple and complex strings for better shrinking
+    use_simple = draw(booleans())
+
+    if use_simple:
+        # Simple ASCII strings that shrink well
+        s = draw(text(string.ascii_letters + string.digits + ' ', min_size=0, max_size=3))
+    else:
+        # Complex unicode for thorough testing
+        # Only filter out surrogates which are invalid in Python strings
+        safe_chars = characters(
+            blacklist_categories=['Cs'],  # No surrogates
+            max_codepoint=0xFFFF          # Stay within BMP for simplicity
+        )
+        s = ''.join(draw(lists(safe_chars, min_size=0, max_size=3)))
+
+    return ast.Constant(value=s)
 
 
 @composite
-def Bytes(draw) -> ast.Bytes:
-    return ast.Bytes(draw(binary(max_size=3)))
+def Bytes(draw) -> ast.Constant:
+    return ast.Constant(value=draw(binary(max_size=3)))
 
 
 @composite
@@ -88,40 +107,57 @@ def Set(draw, expression) -> ast.Set:
 @composite
 def Dict(draw, expression) -> ast.Dict:
     d = draw(dictionaries(expression, expression, min_size=0, max_size=3))
-    return ast.Dict(keys=list(d.keys()), values=list(d.values()))
+    items = list(d.items())  # Get items as pairs to maintain key-value relationships
+    return ast.Dict(keys=[k for k, v in items], values=[v for k, v in items])
 
 
 @composite
-def NameConstant(draw) -> ast.NameConstant:
-    return ast.NameConstant(draw(sampled_from([None, True, False])))
+def NameConstant(draw) -> ast.Constant:
+    return ast.Constant(value=draw(sampled_from([None, False, True])))
 
 
 # endregion
 
 @composite
 def name(draw) -> SearchStrategy:
-    other_id_start = [chr(i) for i in [0x1885, 0x1886, 0x2118, 0x212E, 0x309B, 0x309C]]
-    other_id_continue = [chr(i) for i in [0x00B7, 0x0387, 0x19DA] + list(range(1369, 1371 + 1))]
+    # Choose between simple and complex, but in a way that shrinks to simple
+    use_unicode = draw(booleans())
 
-    xid_start = draw(characters(whitelist_categories=['Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nl'], whitelist_characters=['_'] + other_id_start, blacklist_characters=' '))
-    xid_continue = draw(
-        lists(
-            characters(whitelist_categories=['Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nl', 'Mn', 'Mc', 'Nd', 'Pc'], whitelist_characters=['_'] + other_id_start + other_id_continue, blacklist_characters=' '),
-            min_size=0,
-            max_size=2
+    if not use_unicode:
+        # Simple ASCII names (will be the shrunk case)
+        first = draw(sampled_from(string.ascii_letters + '_'))
+        rest = draw(text(string.ascii_letters + string.digits + '_', min_size=0, max_size=2))
+        n = first + rest
+    else:
+        # Complex unicode names (for thorough testing)
+        other_id_start = [chr(i) for i in [0x1885, 0x1886, 0x2118, 0x212E, 0x309B, 0x309C]]
+        other_id_continue = [chr(i) for i in [0x00B7, 0x0387, 0x19DA] + list(range(1369, 1371 + 1))]
+
+        xid_start = draw(characters(whitelist_categories=['Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nl'],
+                                    whitelist_characters=['_'] + other_id_start,
+                                    blacklist_characters=' '))
+        xid_continue = draw(
+            lists(
+                characters(whitelist_categories=['Lu', 'Ll', 'Lt', 'Lm', 'Lo', 'Nl', 'Mn', 'Mc', 'Nd', 'Pc'],
+                          whitelist_characters=['_'] + other_id_start + other_id_continue,
+                          blacklist_characters=' '),
+                min_size=0,
+                max_size=2
+            )
         )
-    )
+        n = xid_start + ''.join(xid_continue)
+        n = unicodedata.normalize('NFKC', n)
 
-    n = xid_start + ''.join(xid_continue)
+    # Handle keywords by prefixing with underscore
+    if n in keyword.kwlist:
+        return '_' + n
 
-    normalised = unicodedata.normalize('NFKC', n)
-    assume(normalised not in keyword.kwlist)
-    assume(' ' not in normalised)
-    try:
-        ast.parse(normalised, mode='eval')
-    except Exception:
+    # Validate it's a proper identifier
+    if not n.isidentifier():
+        # Shouldn't happen with our generation, but just in case
         assume(False)
-    return normalised
+
+    return n
 
 
 @composite
@@ -131,7 +167,7 @@ def Name(draw, ctx=ast.Load) -> ast.Name:
 
 @composite
 def UnaryOp(draw, expression) -> ast.UnaryOp:
-    op = draw(sampled_from([ast.USub(), ast.UAdd(), ast.Not(), ast.Invert()]))
+    op = draw(sampled_from([ast.UAdd(), ast.USub(), ast.Not(), ast.Invert()]))
     l = draw(expression)
     return ast.UnaryOp(op, l)
 
@@ -152,20 +188,19 @@ def BinOp(draw, expression) -> ast.BinOp:
     op = draw(
         sampled_from(
             [
-                ast.Add(),
+                ast.Add(),      # Most common arithmetic
                 ast.Sub(),
                 ast.Mult(),
                 ast.Div(),
+                ast.Mod(),      # Common operations
                 ast.FloorDiv(),
-                ast.Mod(),
-                ast.Pow(),
-                ast.LShift(),
-                ast.RShift(),
+                ast.Pow(),      # Less common
+                ast.BitAnd(),   # Bitwise operations
                 ast.BitOr(),
                 ast.BitXor(),
-                ast.BitOr(),
-                ast.BitAnd(),
-                ast.MatMult()
+                ast.LShift(),
+                ast.RShift(),
+                ast.MatMult()   # Least common (matrix mult)
             ]
         )
     )
@@ -209,7 +244,8 @@ def IfExp(draw, expression) -> ast.IfExp:
 @composite
 def Attribute(draw, expression) -> ast.Attribute:
     value = draw(expression)
-    attr = draw(text(alphabet=string.ascii_letters, min_size=1, max_size=3).filter(lambda n: n not in keyword.kwlist))
+    # Use our improved name strategy for attributes too
+    attr = draw(name())
     return ast.Attribute(value, attr, ast.Load())
 
 @composite
@@ -229,7 +265,7 @@ def Await(draw, expression) -> ast.Await:
 
 @composite
 def Index(draw, expression) -> ast.Index:
-    return ast.Index(draw(Ellipsis() | expression))
+    return ast.Index(draw(one_of(Ellipsis(), expression)))
 
 
 @composite
@@ -237,13 +273,13 @@ def Slice(draw, expression) -> ast.Slice:
     return ast.Slice(
         lower=draw(expression),
         upper=draw(expression),
-        step=draw(none() | expression)
+        step=draw(one_of(none(), expression))
     )
 
 
 @composite
-def Ellipsis(draw) -> ast.Ellipsis:
-    return ast.Ellipsis()
+def Ellipsis(draw) -> ast.Constant:
+    return ast.Constant(value=...)
 
 
 @composite
@@ -266,7 +302,7 @@ def ExtSlice(draw, expression) -> ast.ExtSlice:
 def Subscript(draw, expression, ctx=ast.Load) -> ast.Subscript:
     return ast.Subscript(
         value=draw(expression),
-        slice=draw(Index(expression) | Slice(expression) | ExtSlice(expression)),
+        slice=draw(one_of(Index(expression), Slice(expression), ExtSlice(expression))),
         ctx=ctx()
     )
 
@@ -275,7 +311,7 @@ def Subscript(draw, expression, ctx=ast.Load) -> ast.Subscript:
 def arg(draw, allow_annotation=True) -> ast.arg:
 
     if allow_annotation:
-        annotation = draw(none() | expression())
+        annotation = draw(one_of(none(), expression()))
     else:
         annotation = None
 
@@ -293,10 +329,10 @@ def arguments(draw, for_lambda=False) -> ast.arguments:
     args = draw(lists(arg(allow_annotation), max_size=2))
     posonlyargs = draw(lists(arg(allow_annotation), max_size=2))
     kwonlyargs = draw(lists(arg(allow_annotation), max_size=2))
-    vararg = draw(none() | arg(allow_annotation))
-    kwarg = draw(none() | arg(allow_annotation))
+    vararg = draw(one_of(none(), arg(allow_annotation)))
+    kwarg = draw(one_of(none(), arg(allow_annotation)))
     defaults = []
-    kw_defaults = draw(lists(none() | expression(), max_size=len(kwonlyargs), min_size=len(kwonlyargs)))
+    kw_defaults = draw(lists(one_of(none(), expression()), max_size=len(kwonlyargs), min_size=len(kwonlyargs)))
     return ast.arguments(
         posonlyargs=posonlyargs,
         args=args,
