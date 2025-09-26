@@ -30,7 +30,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-in-container
         with:
-          image: danielflook/python-minifier-build:${{ matrix.python }}-2025-08-21
+          image: danielflook/python-minifier-build:${{ matrix.python }}-2025-09-26
           run: |
             tox -r -e $(echo "${{ matrix.python }}" | tr -d .)
 
@@ -59,7 +59,7 @@ jobs:
         if: ${{ matrix.python-version == '3.14' }}
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.0-rc.2'
+          python-version: '3.14.0-rc.3'
 
       - name: Set up Python
         if: ${{ matrix.python-version == '2.7' }}

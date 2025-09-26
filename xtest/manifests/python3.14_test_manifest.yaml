@@ -1123,19 +1123,6 @@
     remove_literal_statements: true
     rename_globals: true
   status: passing
-/usr/local/lib/python3.14/test/test_build_details.py:
-- options: {}
-  status: passing
-- options:
-    remove_literal_statements: true
-  status: passing
-- options:
-    rename_globals: true
-  status: passing
-- options:
-    remove_literal_statements: true
-    rename_globals: true
-  status: passing
 /usr/local/lib/python3.14/test/test_builtin.py:
 - options: {}
   status: passing
