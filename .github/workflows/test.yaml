@@ -109,20 +109,20 @@ jobs:
           uvx zizmor --format plain .
 
       - name: Lint CHANGELOG
-        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265 # v19
+        uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e # v20.0.0
         with:
           config: '.config/changelog.markdownlint.yaml'
           globs: 'CHANGELOG.md'
 
       - name: Lint Other Markdown
-        uses: DavidAnson/markdownlint-cli2-action@05f32210e84442804257b2a6f20b273450ec8265 # v19
+        uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e # v20.0.0
         with:
           config: '.config/.markdownlint.yaml'
           globs: |
             **/README.md
 
       - name: Lint Python code
-        uses: astral-sh/ruff-action@9828f49eb4cadf267b40eaa330295c412c68c1f9 # v3
+        uses: astral-sh/ruff-action@57714a7c8a2e59f32539362ba31877a1957dded1 # v3.5.1
         with:
           args: --config=.config/ruff.toml check
           src: src
