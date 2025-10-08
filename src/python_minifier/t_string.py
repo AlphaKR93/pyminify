@@ -71,8 +71,21 @@ class TString(object):
         """Generate all possible representations"""
         actual_candidates = []
 
+        # Normal t-string candidates
+        actual_candidates.extend(self._generate_candidates_with_processor('t', self.str_for))
+
+        # Raw t-string candidates (if we detect backslashes)
+        if self._contains_literal_backslashes():
+            actual_candidates.extend(self._generate_candidates_with_processor('rt', self.raw_str_for))
+
+        return filter(self.is_correct_ast, actual_candidates)
+
+    def _generate_candidates_with_processor(self, prefix, str_processor):
+        """Generate t-string candidates using the given prefix and string processor function."""
+        candidates = []
+
         for quote in self.allowed_quotes:
-            candidates = ['']
+            quote_candidates = ['']
             debug_specifier_candidates = []
 
             for v in self.node.values:
@@ -80,18 +93,18 @@ class TString(object):
                     # String literal part - check for debug specifiers
 
                     # Could this be used as a debug specifier?
-                    if len(candidates) < 10:
+                    if len(quote_candidates) < 10:
                         import re
                         debug_specifier = re.match(r'.*=\s*$', v.value)
                         if debug_specifier:
                             # Maybe! Save for potential debug specifier completion
                             try:
-                                debug_specifier_candidates = [x + '{' + v.value for x in candidates]
+                                debug_specifier_candidates = [x + '{' + v.value for x in quote_candidates]
                             except Exception:
                                 continue
 
                     try:
-                        candidates = [x + self.str_for(v.value, quote) for x in candidates]
+                        quote_candidates = [x + str_processor(v.value, quote) for x in quote_candidates]
                     except Exception:
                         continue
 
@@ -103,7 +116,7 @@ class TString(object):
 
                         # Regular interpolation processing
                         interpolation_candidates = InterpolationValue(v).get_candidates()
-                        candidates = [x + y for x in candidates for y in interpolation_candidates] + completed
+                        quote_candidates = [x + y for x in quote_candidates for y in interpolation_candidates] + completed
 
                         debug_specifier_candidates = []
                     except Exception:
@@ -111,9 +124,9 @@ class TString(object):
                 else:
                     raise RuntimeError('Unexpected TemplateStr value: %r' % v)
 
-            actual_candidates.extend(['t' + quote + x + quote for x in candidates])
+            candidates.extend([prefix + quote + x + quote for x in quote_candidates])
 
-        return filter(self.is_correct_ast, actual_candidates)
+        return candidates
 
     def str_for(self, s, quote):
         """Convert string literal to properly escaped form"""
@@ -124,6 +137,24 @@ class TString(object):
         if mini_s == '':
             return '\\\n'
         return mini_s
+
+    def raw_str_for(self, s):
+        """
+        Generate string representation for raw t-strings.
+        Don't escape backslashes like MiniString does.
+        """
+        return s.replace('{', '{{').replace('}', '}}')
+
+    def _contains_literal_backslashes(self):
+        """
+        Check if this t-string contains literal backslashes in constant values.
+        This indicates it may need to be a raw t-string.
+        """
+        for node in ast.walk(self.node):
+            if is_constant_node(node, ast.Str):
+                if '\\' in node.s:
+                    return True
+        return False
 
     def __str__(self):
         """Generate the shortest valid t-string representation"""
@@ -195,20 +226,27 @@ class InterpolationValue(ExpressionPrinter):
                 format_candidates = python_minifier.f_string.OuterFString(
                     self.node.format_spec, pep701=True
                 ).candidates()
-                # Remove the f prefix and quotes to get just the format part
+                # Remove the f/rf prefix and quotes to get just the format part
                 format_parts = []
                 for fmt in format_candidates:
-                    if fmt.startswith('f'):
+                    # Handle both f"..." and rf"..." patterns
+                    if fmt.startswith('rf'):
+                        # Remove rf prefix and outer quotes
+                        inner = fmt[2:]
+                    elif fmt.startswith('f'):
                         # Remove f prefix and outer quotes
                         inner = fmt[1:]
-                        if (inner.startswith('"') and inner.endswith('"')) or \
-                           (inner.startswith("'") and inner.endswith("'")):
-                            format_parts.append(inner[1:-1])
-                        elif (inner.startswith('"""') and inner.endswith('"""')) or \
-                             (inner.startswith("'''") and inner.endswith("'''")):
-                            format_parts.append(inner[3:-3])
-                        else:
-                            format_parts.append(inner)
+                    else:
+                        continue
+
+                    if (inner.startswith('"') and inner.endswith('"')) or \
+                       (inner.startswith("'") and inner.endswith("'")):
+                        format_parts.append(inner[1:-1])
+                    elif (inner.startswith('"""') and inner.endswith('"""')) or \
+                         (inner.startswith("'''") and inner.endswith("'''")):
+                        format_parts.append(inner[3:-3])
+                    else:
+                        format_parts.append(inner)
 
                 if format_parts:
                     self._append(format_parts)
