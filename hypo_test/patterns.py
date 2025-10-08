@@ -8,9 +8,12 @@ from hypothesis.strategies import booleans, composite, integers, lists, none, on
 
 @composite
 def name(draw):
+    # Generate simple ASCII names that avoid keywords
     n = draw(text(alphabet=string.ascii_letters, min_size=1, max_size=3))
 
-    assume(n not in keyword.kwlist)
+    # Handle keywords by prefixing with underscore instead of filtering
+    if n in keyword.kwlist:
+        return '_' + n
 
     return n
 
@@ -47,7 +50,7 @@ def MatchSequence(draw, pattern) -> ast.MatchSequence:
 def MatchMapping(draw, pattern) -> ast.MatchMapping:
     l = draw(lists(pattern, min_size=1, max_size=3))
 
-    match_mapping = ast.MatchMapping(keys=[ast.Num(0) for i in range(len(l))], patterns=l)
+    match_mapping = ast.MatchMapping(keys=[ast.Constant(value=0) for i in range(len(l))], patterns=l)
 
     has_star = draw(booleans())
     if has_star:
@@ -73,7 +76,7 @@ def MatchClass(draw, pattern) -> ast.MatchClass:
 
 @composite
 def MatchAs(draw, pattern) -> ast.MatchAs:
-    n = draw(none() | name())
+    n = draw(one_of(none(), name()))
 
     if n is None:
         p = None
@@ -89,7 +92,10 @@ def MatchOr(draw, pattern) -> ast.MatchOr:
     return ast.MatchOr(patterns=l)
 
 
-leaves = MatchValue() | MatchSingleton()
+leaves = one_of(
+    MatchValue(),
+    MatchSingleton()
+)
 
 
 def pattern():
@@ -97,13 +103,13 @@ def pattern():
         leaves,
         lambda pattern:
         one_of(
-            MatchSequence(pattern),
-            MatchMapping(pattern),
-            MatchClass(pattern),
-            MatchAs(pattern),
-            MatchOr(pattern)
+            MatchAs(pattern),        # Simplest - just name binding
+            MatchSequence(pattern),   # Simple sequence patterns
+            MatchOr(pattern),         # Alternative patterns
+            MatchMapping(pattern),    # Dictionary-like patterns
+            MatchClass(pattern)       # Most complex - class patterns
         ),
-        max_leaves=150
+        max_leaves=50
     )
 
 

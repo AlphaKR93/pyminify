@@ -1,10 +1,13 @@
 import python_minifier.ast_compat as ast
 
-from hypothesis.strategies import SearchStrategy, composite, lists, recursive, sampled_from
+from hypothesis.strategies import SearchStrategy, composite, lists, one_of, recursive, sampled_from
 
 from .expressions import NameConstant, Num
 
-leaves = NameConstant() | Num()
+leaves = one_of(
+    NameConstant(),
+    Num()
+)
 
 
 @composite
@@ -12,19 +15,19 @@ def BinOp(draw, expression) -> ast.BinOp:
     op = draw(
         sampled_from(
             [
-                ast.Add(),
+                ast.Add(),      # Most common arithmetic
                 ast.Sub(),
                 ast.Mult(),
                 ast.Div(),
+                ast.Mod(),      # Common operations
                 ast.FloorDiv(),
-                ast.Mod(),
-                ast.Pow(),
-                ast.LShift(),
-                ast.RShift(),
+                ast.Pow(),      # Less common
+                ast.BitAnd(),   # Bitwise operations
                 ast.BitOr(),
                 ast.BitXor(),
-                ast.BitAnd(),
-                ast.MatMult()
+                ast.LShift(),
+                ast.RShift(),
+                ast.MatMult()   # Least common (matrix mult)
             ]
         )
     )

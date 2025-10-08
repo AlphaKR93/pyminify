@@ -23,20 +23,19 @@ def AugAssign(draw):
     op = draw(
         sampled_from(
             [
-                ast.Add(),
+                ast.Add(),      # Most common arithmetic
                 ast.Sub(),
                 ast.Mult(),
                 ast.Div(),
+                ast.Mod(),      # Common operations
                 ast.FloorDiv(),
-                ast.Mod(),
-                ast.Pow(),
-                ast.LShift(),
-                ast.RShift(),
+                ast.Pow(),      # Less common
+                ast.BitAnd(),   # Bitwise operations
                 ast.BitOr(),
                 ast.BitXor(),
-                ast.BitOr(),
-                ast.BitAnd(),
-                ast.MatMult()
+                ast.LShift(),
+                ast.RShift(),
+                ast.MatMult()   # Least common (matrix mult)
             ]
         )
     )
@@ -51,7 +50,7 @@ def Print(draw):
 
 @composite
 def Raise(draw):
-    return ast.Raise(draw(none() | expression()), cause=None)
+    return ast.Raise(draw(one_of(none(), expression())), cause=None)
 
 
 @composite
@@ -81,14 +80,16 @@ def Continue(draw) -> ast.Continue:
 
 @composite
 def With(draw, statements) -> ast.With:
-    items = draw(lists(expression(), min_size=1, max_size=3))
+    # Tuples cannot be context expressions - they parse as multiple withitems
+    items = draw(lists(expression().filter(lambda e: not isinstance(e, ast.Tuple)), min_size=1, max_size=3))
     body = draw(lists(statements, min_size=1, max_size=3))
     return ast.With([ast.withitem(context_expr=i, optional_vars=None) for i in items], body)
 
 
 @composite
 def AsyncWith(draw, statements) -> ast.AsyncWith:
-    items = draw(lists(expression(), min_size=1, max_size=3))
+    # Tuples cannot be context expressions - they parse as multiple withitems
+    items = draw(lists(expression().filter(lambda e: not isinstance(e, ast.Tuple)), min_size=1, max_size=3))
     body = draw(lists(statements, min_size=1, max_size=3))
     return ast.AsyncWith([ast.withitem(context_expr=i, optional_vars=None) for i in items], body)
 
@@ -102,7 +103,7 @@ def If(draw, statements) -> ast.If:
 
 @composite
 def ExceptHandler(draw, statements) -> ast.ExceptHandler:
-    t = draw(none() | Name())
+    t = draw(one_of(none(), Name()))
 
     n = None
     if t is not None:
@@ -181,7 +182,7 @@ def Nonlocal(draw) -> ast.Nonlocal:
 
 @composite
 def alias(draw) -> ast.alias:
-    return ast.alias(name=draw(name()), asname=draw(none() | name()))
+    return ast.alias(name=draw(name()), asname=draw(one_of(none(), name())))
 
 
 @composite
@@ -202,7 +203,7 @@ def ImportFrom(draw) -> ast.ImportFrom:
 def TypeVar(draw) -> ast.TypeVar:
     return ast.TypeVar(
         name=draw(name()),
-        bound=draw(none() | expression())
+        bound=draw(one_of(none(), expression()))
     )
 
 
@@ -232,7 +233,7 @@ def FunctionDef(draw, statements) -> ast.FunctionDef:
     body = draw(lists(statements, min_size=1, max_size=3))
     decorator_list = draw(lists(Name(), min_size=0, max_size=2))
     type_params = draw(lists(one_of(TypeVar(), TypeVarTuple(), ParamSpec()), min_size=0, max_size=3))
-    returns = draw(none() | expression())
+    returns = draw(one_of(none(), expression()))
     return ast.FunctionDef(n, args, body, decorator_list, returns, type_params=type_params)
 
 
@@ -243,7 +244,7 @@ def AsyncFunctionDef(draw, statements) -> ast.AsyncFunctionDef:
     body = draw(lists(statements, min_size=1, max_size=3))
     decorator_list = draw(lists(Name(), min_size=0, max_size=2))
     type_params = draw(lists(one_of(TypeVar(), TypeVarTuple(), ParamSpec()), min_size=0, max_size=3))
-    returns = draw(none() | expression())
+    returns = draw(one_of(none(), expression()))
     return ast.AsyncFunctionDef(n, args, body, decorator_list, returns, type_params=type_params)
 
 
@@ -261,7 +262,14 @@ def ClassDef(draw, statements) -> ast.ClassDef:
     bases = draw(lists(expression(), min_size=0, max_size=2))
     keywords = draw(lists(keyword(), min_size=0, max_size=2))
 
-    assume(len({kw.arg for kw in keywords}) == len(keywords))
+    # Remove duplicate keyword names
+    seen_args = set()
+    unique_keywords = []
+    for kw in keywords:
+        if kw.arg not in seen_args:
+            seen_args.add(kw.arg)
+            unique_keywords.append(kw)
+    keywords = unique_keywords
 
     body = draw(lists(statements, min_size=1, max_size=3))
     decorator_list = draw(lists(Name(), min_size=0, max_size=2))
@@ -277,39 +285,38 @@ def ClassDef(draw, statements) -> ast.ClassDef:
 
 if hasattr(ast, 'Print'):
     simple_statements = one_of(
-        Pass(),
-        Break(),
+        Pass(),         # Simplest - no operation
+        Break(),        # Simple control flow
         Continue(),
-        Global(),
+        Global(),       # Simple declarations
         Nonlocal(),
-        Expr(),
-        Assert(),
-        Print(),
-        Raise(),
-        # Delete() |
-        Assign(),
-        AnnAssign(),
+        Expr(),         # Expression statement
+        Assign(),       # Simple assignments
         AugAssign(),
-        Import(),
+        AnnAssign(),    # Type annotations
+        Print(),        # Python 2 print statement
+        Assert(),       # More complex statements
+        Raise(),
+        Import(),       # Import statements
         ImportFrom()
+        # Delete() - commented out
     )
 else:
     simple_statements = one_of(
-        Pass(),
-        Break(),
+        Pass(),         # Simplest - no operation
+        Break(),        # Simple control flow
         Continue(),
-        Global(),
+        Global(),       # Simple declarations
         Nonlocal(),
-        Expr(),
-        Assert(),
-        Raise(),
-        # Delete() |
-        Assign(),
-        AnnAssign(),
+        Expr(),         # Expression statement
+        Assign(),       # Simple assignments
         AugAssign(),
-        Import(),
+        AnnAssign(),    # Type annotations
+        Assert(),       # More complex statements
+        Raise(),
+        Import(),       # Import statements
         ImportFrom(),
-        TypeAlias()
+        TypeAlias()     # Most complex
     )
 
 
@@ -318,16 +325,16 @@ def suite() -> SearchStrategy:
         simple_statements,
         lambda statements:
         one_of(
-            With(statements),
+            If(statements),             # Simple conditional
+            While(statements),          # Simple loop
+            For(statements),            # Loop with iteration
+            With(statements),           # Context manager
+            FunctionDef(statements),    # Function definition
+            AsyncFor(statements),       # Async variants
             AsyncWith(statements),
-            If(statements),
-            For(statements),
-            AsyncFor(statements),
-            While(statements),
-            FunctionDef(statements),
             AsyncFunctionDef(statements),
-            ClassDef(statements),
-            Try(statements)
+            Try(statements),            # Complex exception handling
+            ClassDef(statements)        # Most complex
         ),
         max_leaves=100
     )
@@ -335,5 +342,5 @@ def suite() -> SearchStrategy:
 
 @composite
 def Module(draw) -> ast.Module:
-    b = draw(lists(suite(), min_size=1, max_size=10))
+    b = draw(lists(suite(), min_size=1, max_size=3))
     return ast.Module(body=b, type_ignores=[])

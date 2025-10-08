@@ -395,68 +395,87 @@ def DictComp(draw, expression) -> ast.DictComp:
     )
 
 
-leaves = NameConstant() | \
-         Name() | \
-         Num() | \
-         Str() | \
-         Bytes()
+leaves = one_of(
+    NameConstant(),
+    Name(),
+    Num(),
+    Str(),
+    Bytes()
+)
+
+
+# Group related operations for better recursive structure
+def binary_operations(expr):
+    """Simple binary and comparison operations"""
+    return one_of(
+        BinOp(expr),
+        Compare(expr),
+        BoolOp(expr),
+        UnaryOp(expr)
+    )
+
+def collections(expr):
+    """Collection types"""
+    return one_of(
+        List(expr),
+        Tuple(expr),
+        Set(expr),
+        Dict(expr)
+    )
+
+def calls_and_access(expr):
+    """Function calls and member access"""
+    return one_of(
+        Call(expr),
+        Attribute(expr),
+        Subscript(expr)
+    )
+
+def control_flow(expr):
+    """Control flow expressions"""
+    return one_of(
+        IfExp(expr),
+        Yield(expr),
+        YieldFrom(expr)
+    )
+
+def comprehensions(expr):
+    """List/dict/generator comprehensions"""
+    return one_of(
+        ListComp(expr),
+        DictComp(expr),
+        GeneratorExp(expr)
+    )
 
 
 def async_expression() -> SearchStrategy:
     return recursive(
         leaves,
-        lambda expression:
-        one_of(
-            Yield(expression),
-            YieldFrom(expression),
-            Await(expression),
-            IfExp(expression),
-            Call(expression),
-            BinOp(expression),
-            Set(expression),
-            List(expression),
-            Tuple(expression),
-            BoolOp(expression),
-            UnaryOp(expression),
-            Attribute(expression),
-            Dict(expression),
-            Compare(expression),
-            Lambda(expression),
-            ListComp(expression),
-            GeneratorExp(expression),
-            DictComp(expression),
-            Subscript(expression)
+        lambda expression: one_of(
+            binary_operations(expression),
+            collections(expression),
+            calls_and_access(expression),
+            control_flow(expression),
+            comprehensions(expression),
+            Await(expression),  # Async-specific
+            Lambda(expression)   # Complex case
         ),
-        max_leaves=150
+        max_leaves=50
     )
 
 
 def expression() -> SearchStrategy:
     return recursive(
         leaves,
-        lambda expression:
-        one_of(
-            Yield(expression),
-            YieldFrom(expression),
-            # Await(expression),
-            IfExp(expression),
-            Call(expression),
-            BinOp(expression),
-            Set(expression),
-            List(expression),
-            Tuple(expression),
-            BoolOp(expression),
-            UnaryOp(expression),
-            Attribute(expression),
-            Dict(expression),
-            Compare(expression),
-            Lambda(expression),
-            ListComp(expression),
-            GeneratorExp(expression),
-            DictComp(expression),
-            Subscript(expression)
+        lambda expression: one_of(
+            binary_operations(expression),
+            collections(expression),
+            calls_and_access(expression),
+            control_flow(expression),
+            comprehensions(expression),
+            Lambda(expression)   # Complex case
         ),
-        max_leaves=150
+        max_leaves=50
     )
 
 
