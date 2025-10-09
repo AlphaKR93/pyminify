@@ -157,7 +157,7 @@ class FString(object):
                 escaped += '}}'
             elif ord(c) < 32 and c not in '\n\r\t':
                 # Escape other control characters
-                escaped += f'\\x{ord(c):02x}'
+                escaped += '\\x{:02x}'.format(ord(c))
             else:
                 escaped += c
         return escaped
@@ -444,7 +444,7 @@ class FormatSpec(object):
                 escaped += '\\r'
             elif ord(c) < 32 and c not in '\t\n':
                 # Escape other control characters except tab, newline
-                escaped += f'\\x{ord(c):02x}'
+                escaped += '\\x{:02x}'.format(ord(c))
             else:
                 escaped += c
         return escaped
@@ -515,7 +515,7 @@ class Bytes(object):
             elif 32 <= b <= 126:  # printable ASCII
                 literal += chr(b)
             else:  # other non-printable characters
-                literal += f'\\x{b:02x}'
+                literal += '\\x{:02x}'.format(b)
 
         if literal:
             literal += self.current_quote
