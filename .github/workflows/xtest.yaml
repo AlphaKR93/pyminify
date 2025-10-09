@@ -46,6 +46,36 @@ jobs:
             
             tox -r -e $(echo "${{ matrix.python }}" | tr -d .) -- xtest
 
+  hypo_test:
+    name: Property Based Tests
+    runs-on: self-hosted
+    steps:
+      - name: Clear workspace
+        run: rm -rf "${GITHUB_WORKSPACE:?}/*"
+
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 1
+          show-progress: false
+          persist-credentials: false
+
+      - name: Set version statically
+        run: |
+          VERSION=0.0.0
+          sed -i "s/setup_requires=.*/version='$VERSION',/; s/use_scm_version=.*//" setup.py
+
+      - name: Run tests
+        uses: ./.github/actions/run-in-container
+        with:
+          image: danielflook/python-minifier-build:python3.14-2025-09-26
+          run: |
+
+            pip3.14 install .
+            pip3.14 install hypothesis pytest
+
+            pytest hypo_test --hypothesis-show-statistics
+
   test-corpus:
     needs: test
     name: Minify Corpus

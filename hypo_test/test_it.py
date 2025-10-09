@@ -3,7 +3,6 @@ import python_minifier.ast_compat as ast
 from datetime import timedelta
 
 from hypothesis import HealthCheck, Verbosity, example, given, note, settings
-from hypothesis.strategies import booleans
 
 from python_minifier.ast_annotation import add_parent as add_parent_refs
 from python_minifier.ast_compare import compare_ast
