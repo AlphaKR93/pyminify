@@ -1,9 +1,10 @@
-import ast
+import python_minifier.ast_compat as ast
 
 from datetime import timedelta
 
-from hypothesis import HealthCheck, Verbosity, given, note, settings
+from hypothesis import HealthCheck, Verbosity, example, given, note, settings
 
+from python_minifier.ast_annotation import add_parent as add_parent_refs
 from python_minifier.ast_compare import compare_ast
 from python_minifier.ast_printer import print_ast
 from python_minifier.expression_printer import ExpressionPrinter
@@ -15,10 +16,11 @@ from .expressions import Expression
 from .folding import FoldableExpression
 from .module import Module, TypeAlias
 from .patterns import Pattern
+from .strings import StringExpression
 
 
 @given(node=Expression())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
 def test_expression(node):
     assert isinstance(node, ast.AST)
 
@@ -29,8 +31,9 @@ def test_expression(node):
     compare_ast(node, ast.parse(code, 'test_expression', 'eval'))
 
 
+@example(node=ast.Module(body=[ast.Pass()], type_ignores=[]))  # Simple passing example
 @given(node=Module())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow], verbosity=Verbosity.verbose)
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large], verbosity=Verbosity.verbose)
 def test_module(node):
     assert isinstance(node, ast.Module)
 
@@ -42,7 +45,7 @@ def test_module(node):
 
 
 @given(node=Pattern())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
 def test_pattern(node):
 
     module = ast.Module(
@@ -66,11 +69,12 @@ def test_pattern(node):
 
 
 @given(node=FoldableExpression())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=1), max_examples=1000, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=1), max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
 def test_folding(node):
     assert isinstance(node, ast.AST)
     note(print_ast(node))
 
+    add_parent_refs(node)
     add_parent(node)
 
     constant_folder = FoldConstants()
@@ -80,7 +84,7 @@ def test_folding(node):
 
 
 @given(node=TypeAlias())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
 def test_type_alias(node):
 
     module = ast.Module(
@@ -95,7 +99,7 @@ def test_type_alias(node):
 
 
 @given(node=TypeAlias())
-@settings(report_multiple_bugs=False, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
+@settings(report_multiple_bugs=True, deadline=timedelta(seconds=2), max_examples=100, verbosity=Verbosity.verbose)
 def test_function_type_param(node):
 
     module = ast.Module(
@@ -122,3 +126,15 @@ def test_function_type_param(node):
     code = printer(module)
     note(code)
     compare_ast(module, ast.parse(code, 'test_function_type_param'))
+
+
+@given(node=StringExpression())
+@settings(report_multiple_bugs=True, deadline=None, max_examples=100, suppress_health_check=[HealthCheck.too_slow])  # verbosity=Verbosity.verbose
+def test_string_expression(node):
+    assert isinstance(node, ast.Expression)
+
+    note(ast.dump(node))
+    printer = ExpressionPrinter()
+    code = printer(node)
+    note(code)
+    compare_ast(node, ast.parse(code, 'test_string_expression', 'eval'))

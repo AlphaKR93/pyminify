@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  release:
-    types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 2.11.4)'
+        required: true
+        type: string
 
 concurrency:
   group: release
@@ -13,135 +17,25 @@ permissions:
 
 jobs:
 
-  package_python3:
-    name: Create sdist and Python 3 Wheel
-    runs-on: ubuntu-24.04
-    outputs:
-        sdist: ${{ steps.package.outputs.sdist }}
-        wheel: ${{ steps.package.outputs.wheel }}
-    container:
-      image: danielflook/python-minifier-build:python3.13-2024-09-15
+  create_draft_release:
+    name: Create Draft Release
+    uses: ./.github/workflows/create_draft_release.yaml
+    if: github.ref == 'refs/heads/main'
     permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 1
-          show-progress: false
-          persist-credentials: false
+      contents: write
+    with:
+      release_version: ${{ inputs.version }}
 
-      - name: Set version statically
-        env:
-          VERSION: ${{ github.event.release.tag_name }}
-        run: |
-          sed -i "s/setup_requires=.*/version='$VERSION',/; s/use_scm_version=.*//" setup.py
-          echo "Version: $VERSION"
-
-      - name: Build distribution packages
-        id: package
-        run: |
-          pip3 install --upgrade build
-          python3 -m build
-          
-          echo "sdist=$(find dist -name '*.tar.gz' -printf "%f\n")" >> "$GITHUB_OUTPUT"
-          echo "wheel=$(find dist -name '*-py3-*.whl' -printf "%f\n")" >> "$GITHUB_OUTPUT"
-
-      - name: Upload sdist artifact
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: dist-sdist
-          path: dist/${{ steps.package.outputs.sdist }}
-          if-no-files-found: error
-
-      - name: Upload Python 3 wheel artifact
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: dist-py3-wheel
-          path: dist/${{ steps.package.outputs.wheel }}
-          if-no-files-found: error
-
-  package_python2:
-    name: Create Python 2 Wheel
-    runs-on: ubuntu-24.04
-    needs: [package_python3]
-    outputs:
-        wheel: ${{ steps.package.outputs.wheel }}
-    container:
-      image: danielflook/python-minifier-build:python2.7-2024-09-15
-    steps:
-      - name: Download source distribution artifact
-        uses: actions/download-artifact@v4.1.8
-        with:
-          name: dist-sdist
-          path: dist/
-
-      - name: Build Python 2 wheel
-        id: package
-        env:
-          PYTHON3_SDIST: ${{ needs.package_python3.outputs.sdist }}
-        run: |
-          dnf install -y findutils
-          pip install --upgrade wheel
-          pip wheel dist/"$PYTHON3_SDIST" -w dist
-          echo "wheel=$(find dist -name '*-py2-*.whl' -printf "%f\n")" >> "$GITHUB_OUTPUT"
-
-      - name: Upload Python 2 wheel artifact
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: dist-py2-wheel
-          path: dist/${{ steps.package.outputs.wheel }}
-          if-no-files-found: error
-
-  documentation:
-    name: Test Documentation
-    runs-on: ubuntu-24.04
-    needs: [package_python3]
-    container:
-      image: danielflook/python-minifier-build:python3.13-2024-09-15
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/download-artifact@v4.1.8
-        with:
-          name: dist-sdist
-          path: dist/
-
-      - name: Install package
-        env:
-          PYTHON3_SDIST: ${{ needs.package_python3.outputs.sdist }}
-        run: |
-          pip3 install dist/"$PYTHON3_SDIST"
-          pyminify --version
-
-      - name: Checkout
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 1
-          show-progress: false
-          persist-credentials: false
-
-      - name: Build documentation
-        run: |
-          pip3 install sphinx sphinxcontrib-programoutput sphinx_rtd_theme
-          sphinx-build docs/source /tmp/build
-
-      - name: Upload documentation artifact
-        uses: actions/upload-pages-artifact@v3.0.1
-        with:
-          path: /tmp/build
-
-  publish-to-pypi:
+  publish_to_pypi:
     name: Publish to PyPI
     needs:
-      - package_python3
-      - package_python2
+      - create_draft_release
     runs-on: ubuntu-24.04
     permissions:
       id-token: write
     environment:
       name: pypi
-      url: https://pypi.org/project/python-minifier/${{ github.event.release.tag_name }}
+      url: https://pypi.org/project/python-minifier/${{ inputs.version }}
     steps:
       - name: Download distribution artifacts
         uses: actions/download-artifact@v4.1.8
@@ -151,15 +45,15 @@ jobs:
           merge-multiple: true
 
       - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc  # v1.12.4
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e  # v1.13.0
         with:
           print-hash: true
           verbose: true
 
-  publish-docs:
+  publish_docs:
     name: Publish Documentation
     needs:
-      - documentation
+      - create_draft_release
     runs-on: ubuntu-24.04
     permissions:
       pages: write
@@ -171,3 +65,22 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4.0.5
+
+  publish_release:
+    name: Publish Release
+    needs:
+      - create_draft_release
+      - publish_to_pypi
+      - publish_docs
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Publish Release
+        env:
+          RELEASE_ID: ${{ needs.create_draft_release.outputs.release_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit "$RELEASE_ID" \
+            --repo ${{ github.repository }} \
+            --draft=false

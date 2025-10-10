@@ -10,6 +10,15 @@ and will output source code compatible with the version of the interpreter it is
 This means that if you minify code written for Python 3.11 using python-minifier running with Python 3.12,
 the minified code may only run with Python 3.12.
 
+## [3.1.0] - 2025-10-11
+
+### Added
+- Python 3.14 support, including:
+  + PEP 750 Template strings (t-strings)
+
+### Fixed
+- Failure to minify modules with special characters appearing in f-strings (e.g. null)
+
 ## [3.0.0] - 2025-08-13
 
 ### Fixed
@@ -297,6 +306,7 @@ the minified code may only run with Python 3.12.
 - python-minifier package
 - pyminify command
 
+[3.1.0]: https://github.com/dflook/python-minifier/compare/3.0.0...3.1.0
 [3.0.0]: https://github.com/dflook/python-minifier/compare/2.11.3...3.0.0
 [2.11.3]: https://github.com/dflook/python-minifier/compare/2.11.2...2.11.3
 [2.11.2]: https://github.com/dflook/python-minifier/compare/2.11.1...2.11.2

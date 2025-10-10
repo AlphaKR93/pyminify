@@ -4,6 +4,8 @@ The hypothesis strategies in this directory generate an AST that python can pars
 It does not take care to generate semantically valid programs.
 Failure cases should shrink into valid programs, though.
 
+pytest hypo_test --hypothesis-show-statistics --hypothesis-explain
+
 TODO:
 Assignment targets: (in comprehensions too)
 
