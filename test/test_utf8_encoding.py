@@ -29,7 +29,7 @@ def mathematical_formula():
 def arrow_symbols():
     directions = {
         u"left": u"←",
-        u"right": u"→", 
+        u"right": u"→",
         u"up": u"↑",
         u"down": u"↓"
     }
@@ -93,7 +93,7 @@ class UnicodeClass:
     """Class with unicode: ñ ü ö ä ë ï ÿ"""
     def __init__(self):
         self.message = u"Héllö Wörld with àccénts!"
-        
+
     def get_symbols(self):
         return u"Symbols: ™ © ® ° ± × ÷ ≠ ≤ ≥"
 '''

@@ -2,7 +2,6 @@ import python_minifier.ast_compat as ast
 import keyword
 import string
 
-from hypothesis import assume
 from hypothesis.strategies import booleans, composite, integers, lists, none, one_of, recursive, sampled_from, text
 
 
@@ -35,22 +34,22 @@ def MatchStar(draw) -> ast.MatchStar:
 
 @composite
 def MatchSequence(draw, pattern) -> ast.MatchSequence:
-    l = draw(lists(pattern, min_size=1, max_size=3))
+    patterns = draw(lists(pattern, min_size=1, max_size=3))
 
     has_star = draw(booleans())
 
     if has_star:
-        star_pos = draw(integers(min_value=0, max_value=len(l)))
-        l.insert(star_pos, draw(MatchStar()))
+        star_pos = draw(integers(min_value=0, max_value=len(patterns)))
+        patterns.insert(star_pos, draw(MatchStar()))
 
-    return ast.MatchSequence(patterns=l)
+    return ast.MatchSequence(patterns=patterns)
 
 
 @composite
 def MatchMapping(draw, pattern) -> ast.MatchMapping:
-    l = draw(lists(pattern, min_size=1, max_size=3))
+    patterns = draw(lists(pattern, min_size=1, max_size=3))
 
-    match_mapping = ast.MatchMapping(keys=[ast.Constant(value=0) for i in range(len(l))], patterns=l)
+    match_mapping = ast.MatchMapping(keys=[ast.Constant(value=0) for i in range(len(patterns))], patterns=patterns)
 
     has_star = draw(booleans())
     if has_star:
@@ -88,8 +87,8 @@ def MatchAs(draw, pattern) -> ast.MatchAs:
 
 @composite
 def MatchOr(draw, pattern) -> ast.MatchOr:
-    l = draw(lists(pattern, min_size=2, max_size=3))
-    return ast.MatchOr(patterns=l)
+    patterns = draw(lists(pattern, min_size=2, max_size=3))
+    return ast.MatchOr(patterns=patterns)
 
 
 leaves = one_of(

@@ -301,8 +301,8 @@ class ExpressionPrinter(object):
 
             if value_precedence != 0 and (
                 (op_precedence > value_precedence)
-                or op_precedence == value_precedence
-                and self._is_left_associative(node.op)
+                or (op_precedence == value_precedence
+                    and self._is_left_associative(node.op))
             ):
                 self.printer.delimiter('(')
                 self._expression(v)

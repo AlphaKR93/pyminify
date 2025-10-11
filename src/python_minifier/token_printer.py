@@ -103,7 +103,7 @@ class TokenPrinter(object):
     def __str__(self):
         """Return the output code."""
         return self._code
-    
+
     def __unicode__(self):
         """Return the output code as unicode (for Python 2.7 compatibility)."""
         return self._code

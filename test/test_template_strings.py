@@ -67,7 +67,7 @@ def test_tstring_quote_variations():
         't"mixed {name} with \\"escaped\\" quotes"',
         "t'mixed {name} with \\'escaped\\' quotes'",
     ]
-    
+
     for statement in statements:
         # Just test that it parses and round-trips correctly, don't care about exact quote style
         parsed = ast.parse(statement)
@@ -101,7 +101,7 @@ def test_tstring_with_complex_expressions():
         ('t"Subscription: {data[key][0]}"', 't"Subscription: {data[key][0]}"'),
         ('t"Ternary: {x if condition else y}"', 't"Ternary: {x if condition else y}"'),
     ]
-    
+
     for input_statement, expected_output in test_cases:
         assert unparse(ast.parse(input_statement)) == expected_output
 
@@ -119,7 +119,7 @@ def test_tstring_with_binary_operations():
         ('t"Boolean: {a and b}"', 't"Boolean: {a and b}"'),
         ('t"Bitwise: {x | y}"', 't"Bitwise: {x|y}"'),
     ]
-    
+
     for input_statement, expected_output in test_cases:
         assert unparse(ast.parse(input_statement)) == expected_output
 
@@ -149,7 +149,7 @@ def test_tstring_special_characters():
         "t'Quote: \\' and {value}'",
         't"Backslash: \\\\ and {value}"',
     ]
-    
+
     for statement in statements:
         # Test that it parses and round-trips correctly
         parsed = ast.parse(statement)
@@ -173,14 +173,14 @@ def test_tstring_vs_fstring_syntax():
     # These should both parse successfully but produce different ASTs
     tstring = 't"Hello {name}"'
     fstring = 'f"Hello {name}"'
-    
+
     t_ast = ast.parse(tstring)
     f_ast = ast.parse(fstring)
-    
+
     # Should be different node types in the expression
     assert type(t_ast.body[0].value).__name__ == 'TemplateStr'
     assert type(f_ast.body[0].value).__name__ == 'JoinedStr'
-    
+
     # But should unparse correctly
     assert unparse(t_ast) == tstring
     assert unparse(f_ast) == fstring
@@ -195,22 +195,22 @@ def test_raw_template_strings():
             'rt"raw template {name}"',
             'rt"backslash \\\\ preserved {name}"',
         ]
-        
+
         for statement in raw_statements:
             # Raw t-strings should parse successfully
             ast.parse(statement)
-            
+
         # Test that raw behavior is preserved in the AST even if prefix is lost
         raw_backslash = 'rt"backslash \\\\n and {name}"'
         regular_backslash = 't"backslash \\n and {name}"'  # Only two backslashes for regular
-        
+
         raw_ast = ast.parse(raw_backslash)
         regular_ast = ast.parse(regular_backslash)
-        
+
         # The AST should show different string content
         raw_content = raw_ast.body[0].value.values[0].value
         regular_content = regular_ast.body[0].value.values[0].value
-        
+
         # Raw should have literal backslash-n, regular should have actual newline
         assert '\\\\n' in raw_content  # literal backslash-n (two chars: \ and n)
         assert '\n' in regular_content  # actual newline character
@@ -223,12 +223,12 @@ def test_tstring_debug_specifier_limitations():
     # Debug specifiers work when at the start of the string
     assert unparse(ast.parse('t"{name=}"')) == 't"{name=}"'
     assert unparse(ast.parse('t"{value=:.2f}"')) == 't"{value=:.2f}"'
-    
+
     # But are lost when there's a preceding literal (same limitation as f-strings)
     assert unparse(ast.parse('t"Hello {name=}"')) == 't"Hello name={name!r}"'
     assert unparse(ast.parse('t"Hello {name=!s}"')) == 't"Hello name={name!s}"'
     assert unparse(ast.parse('t"Hello {name=:.2f}"')) == 't"Hello name={name:.2f}"'
-    
+
     # This matches f-string behavior exactly
     assert unparse(ast.parse('f"Hello {name=}"')) == 'f"Hello name={name!r}"'
 
@@ -242,7 +242,7 @@ def test_tstring_error_conditions():
         't"Format {value:{width}.{precision}f} complex"',
         't"Mixed {a!r} and {b=:.2f} specifiers"',
     ]
-    
+
     for case in complex_cases:
         try:
             # Parse as module, not expression

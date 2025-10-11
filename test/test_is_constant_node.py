@@ -8,7 +8,7 @@ from python_minifier.util import is_constant_node
 
 
 @pytest.mark.filterwarnings("ignore:ast.Str is deprecated:DeprecationWarning")
-@pytest.mark.filterwarnings("ignore:ast.Bytes is deprecated:DeprecationWarning") 
+@pytest.mark.filterwarnings("ignore:ast.Bytes is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.Num is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.NameConstant is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.Ellipsis is deprecated:DeprecationWarning")
@@ -36,7 +36,7 @@ def test_type_nodes():
 
 
 @pytest.mark.filterwarnings("ignore:ast.Str is deprecated:DeprecationWarning")
-@pytest.mark.filterwarnings("ignore:ast.Bytes is deprecated:DeprecationWarning") 
+@pytest.mark.filterwarnings("ignore:ast.Bytes is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.Num is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.NameConstant is deprecated:DeprecationWarning")
 @pytest.mark.filterwarnings("ignore:ast.Ellipsis is deprecated:DeprecationWarning")
@@ -61,9 +61,9 @@ def test_ast_compat_types_python314():
     """Test that ast_compat provides the removed AST types in Python 3.14+"""
     if sys.version_info < (3, 14):
         pytest.skip('ast_compat types test only for Python 3.14+')
-    
+
     import python_minifier.ast_compat as ast_compat
-    
+
     # Test that ast_compat provides the removed types
     assert is_constant_node(ast_compat.Str('a'), ast_compat.Str)
     assert is_constant_node(ast_compat.Bytes(b'a'), ast_compat.Bytes)
@@ -79,9 +79,9 @@ def test_ast_compat_constant_nodes_python314():
     """Test that ast_compat works with Constant nodes in Python 3.14+"""
     if sys.version_info < (3, 14):
         pytest.skip('ast_compat constant test only for Python 3.14+')
-    
+
     import python_minifier.ast_compat as ast_compat
-    
+
     # Test that Constant nodes work with ast_compat types
     assert is_constant_node(ast.Constant('a'), ast_compat.Str)
     assert is_constant_node(ast.Constant(b'a'), ast_compat.Bytes)

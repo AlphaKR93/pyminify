@@ -1,6 +1,5 @@
 import python_minifier.ast_compat as ast
 
-from hypothesis import assume
 from hypothesis.strategies import SearchStrategy, booleans, composite, integers, lists, none, one_of, recursive, sampled_from
 
 from .expressions import Name, arguments, expression, name
