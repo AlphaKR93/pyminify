@@ -16,7 +16,7 @@ from python_minifier import unparse
 from python_minifier.ast_compare import compare_ast
 
 
-@pytest.mark.parametrize('source,description', [
+@pytest.mark.parametrize(('source', 'description'), [
     # Raw t-string backslash tests - core regression testing
     pytest.param(r'rt"{x:\\xFF}"', 'Single backslash in format spec (minimal case)', id='raw-tstring-backslash-format-spec'),
     pytest.param(r'rt"\\n{x}\\t"', 'Backslashes in literal parts', id='raw-tstring-backslash-outer-str'),
@@ -71,7 +71,7 @@ def test_tstring_edge_cases(source, description):
     compare_ast(expected_ast, ast.parse(actual_code))
 
 
-@pytest.mark.parametrize('source,description', [
+@pytest.mark.parametrize(('source', 'description'), [
     pytest.param(r't"{t"\\n{x}\\t"}"', 'Nested t-strings with backslashes in inner string parts', id='nested-tstring-backslashes'),
     pytest.param(r't"{rt"\\xFF{y}\\n"}"', 'Nested raw t-strings with backslashes', id='nested-raw-tstring-backslashes'),
     pytest.param(r't"{t"{x:\\xFF}"}"', 'Nested t-strings with backslashes in format specs', id='nested-tstring-format-spec-backslashes'),

@@ -11,7 +11,7 @@ from python_minifier import unparse
 from python_minifier.ast_compare import compare_ast
 
 
-@pytest.mark.parametrize('source,description', [
+@pytest.mark.parametrize(('source', 'description'), [
     # Raw f-string backslash tests - core regression fix
     pytest.param(r'rf"{x:\\xFF}"', 'Single backslash in format spec (minimal failing case)', id='raw-fstring-backslash-format-spec'),
     pytest.param(r'rf"\\n{x}\\t"', 'Backslashes in literal parts', id='raw-fstring-backslash-outer-str'),
@@ -52,7 +52,7 @@ def test_fstring_edge_cases(source, description):
     compare_ast(expected_ast, ast.parse(actual_code))
 
 
-@pytest.mark.parametrize('source,description', [
+@pytest.mark.parametrize(('source', 'description'), [
     pytest.param(r'f"{f"\\n{x}\\t"}"', 'Nested f-strings with backslashes in inner string parts', id='nested-fstring-backslashes'),
     pytest.param(r'f"{rf"\\xFF{y}\\n"}"', 'Nested raw f-strings with backslashes', id='nested-raw-fstring-backslashes'),
     pytest.param(r'f"{f"{x:\\xFF}"}"', 'Nested f-strings with backslashes in format specs', id='nested-fstring-format-spec-backslashes'),

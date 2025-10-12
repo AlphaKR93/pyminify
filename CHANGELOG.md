@@ -10,7 +10,7 @@ and will output source code compatible with the version of the interpreter it is
 This means that if you minify code written for Python 3.11 using python-minifier running with Python 3.12,
 the minified code may only run with Python 3.12.
 
-## [3.1.0] - 2025-10-11
+## [3.1.0] - 2025-10-10
 
 ### Added
 - Python 3.14 support, including:

@@ -112,17 +112,15 @@ def get_active_manifest():
 
     if platform.python_implementation() == 'CPython':
         return Manifest('python%i.%i' % (sys.version_info[0], sys.version_info[1]))
-    else:
-        if sys.version_info[0] == 2:
-            return Manifest('pypy')
-        else:
-            return Manifest('pypy3')
+    if sys.version_info[0] == 2:
+        return Manifest('pypy')
+    return Manifest('pypy3')
 
 
 manifest = get_active_manifest()
 
 
-@pytest.mark.filterwarnings("ignore:This process \(pid=\d+\) is multi-threaded, use of fork\(\) may lead to deadlocks in the child.:DeprecationWarning:sh")
+@pytest.mark.filterwarnings(r"ignore:This process \(pid=\d+\) is multi-threaded, use of fork\(\) may lead to deadlocks in the child.:DeprecationWarning:sh")
 @pytest.mark.parametrize('test_case', list(manifest), ids=lambda test_case: repr(test_case))
 def test_regrtest(test_case):
     test_case.run_test()

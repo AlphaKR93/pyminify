@@ -88,8 +88,8 @@ def Bytes(draw) -> ast.Constant:
 
 @composite
 def List(draw, expression) -> ast.List:
-    l = draw(lists(expression, min_size=0, max_size=3))
-    return ast.List(elts=l, ctx=ast.Load())
+    elements = draw(lists(expression, min_size=0, max_size=3))
+    return ast.List(elts=elements, ctx=ast.Load())
 
 
 @composite
@@ -168,8 +168,8 @@ def Name(draw, ctx=ast.Load) -> ast.Name:
 @composite
 def UnaryOp(draw, expression) -> ast.UnaryOp:
     op = draw(sampled_from([ast.UAdd(), ast.USub(), ast.Not(), ast.Invert()]))
-    l = draw(expression)
-    return ast.UnaryOp(op, l)
+    operand = draw(expression)
+    return ast.UnaryOp(op, operand)
 
 
 @composite

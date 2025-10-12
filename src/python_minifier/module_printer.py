@@ -596,7 +596,7 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.keyword('case')
 
         if isinstance(node.pattern, ast.MatchSequence):
-            self.visit_MatchSequence(node.pattern, open=True)
+            self.visit_MatchSequence(node.pattern, omit_brackets=True)
         else:
             self.pattern(node.pattern)
 
@@ -626,10 +626,10 @@ class ModulePrinter(ExpressionPrinter):
         else:
             self.printer.identifier(node.name)
 
-    def visit_MatchSequence(self, node, open=False):
+    def visit_MatchSequence(self, node, omit_brackets=False):
         assert isinstance(node, ast.MatchSequence)
 
-        if len(node.patterns) < 2 or not open:
+        if len(node.patterns) < 2 or not omit_brackets:
             self.printer.delimiter('[')
 
         delimiter = Delimiter(self.printer)
@@ -637,7 +637,7 @@ class ModulePrinter(ExpressionPrinter):
             delimiter.new_item()
             self.pattern(pattern)
 
-        if len(node.patterns) < 2 or not open:
+        if len(node.patterns) < 2 or not omit_brackets:
             self.printer.delimiter(']')
 
     def visit_MatchMapping(self, node):

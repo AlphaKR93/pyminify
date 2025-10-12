@@ -30,13 +30,13 @@ class A:
 def test_no_parent_for_root_node():
     tree = ast.parse('a = 1')
     add_parent(tree)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Node has no parent"):
         get_parent(tree)
 
 
 def test_no_parent_for_unannotated_node():
     tree = ast.parse('a = 1')
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Node has no parent"):
         get_parent(tree.body[0])
 
 

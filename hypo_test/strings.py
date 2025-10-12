@@ -1,6 +1,5 @@
 import ast
 
-from hypothesis import assume
 from hypothesis.strategies import (
     SearchStrategy,
     booleans,
