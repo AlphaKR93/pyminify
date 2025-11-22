@@ -216,80 +216,6 @@ class ProjectMinifier:
         self.load_project()
         self.resolve_cross_module_references()
 
-        """
-        for project, modules in self.packages.items():
-            if project.remove_literal_statements:
-                for path, module in modules.items():
-                    modules[path] = RemoveLiteralStatements()(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_annotations:
-                for path, module in modules.items():
-                    modules[path] = RemoveAnnotations(project.remove_annotations)(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_pass:
-                for path, module in modules.items():
-                    modules[path] = RemovePass()(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_object_base:
-                for path, module in modules.items():
-                    modules[path] = RemoveObject()(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_asserts:
-                for path, module in modules.items():
-                    modules[path] = RemoveAsserts()(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_debug:
-                for path, module in modules.items():
-                    modules[path] = RemoveDebug()(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_explicit_return_none:
-                for path, module in modules.items():
-                    modules[path] = RemoveExplicitReturnNone()(module)
-
-        for project, modules in self.packages.items():
-            if project.constant_folding:
-                for path, module in modules.items():
-                    modules[path] = FoldConstants()(module)
-
-        for project, modules in self.packages.items():
-            if project.hoist_literals:
-                for path, module in modules.items():
-                    rename_literals(module)
-
-        for project, modules in self.packages.items():
-            if project.remove_builtin_exception_brackets:
-                for path, module in modules.items():
-                    if not module.tainted:
-                        remove_no_arg_exception_call(module)
-
-        for modules in self.packages.values():
-            for module in modules.values():
-                add_assigned(module)
-
-        assigner = NameAssigner()
-        for project, modules in self.packages.items():
-            for path, module in modules.items():
-                assigner(module, prefix_globals=True, reserved_globals=project.preserve_globals)
-
-        for project, modules in self.packages.items():
-            if project.convert_posargs_to_args:
-                for path, module in modules.items():
-                    remove_posargs(module)
-
-        for project, modules in self.packages.items():
-            for path, module in modules.items():
-                minified_code = ModulePrinter()(module)
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write(minified_code)
-                print(f"Minified: {path}")
-        """
-
         for package, modules in self.packages.items():
             if package.remove_literal_statements:
                 for path, module in modules.items():
@@ -322,6 +248,12 @@ class ProjectMinifier:
                         remove_no_arg_exception_call(module)
 
         for package, modules in self.packages.items():
+            if package.remove_unused_imports:
+                for path, module in modules.items():
+                    if not path.endswith("__init__.py"):
+                        module = remove_unused_imports(module, package.preserve_imports)
+
+        for package, modules in self.packages.items():
             if package.hoist_literals:
                 for path, module in modules.items():
                     rename_literals(module)
@@ -346,9 +278,6 @@ class ProjectMinifier:
 
                 if package.convert_posargs_to_args:
                     module = remove_posargs(module)
-
-                if package.remove_unused_imports and not path.endswith("__init__.py"):
-                    module = remove_unused_imports(module, package.preserve_imports)
 
                 if package.remove_pass:
                     modules[path] = RemovePass()(module)
