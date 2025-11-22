@@ -1,0 +1,366 @@
+import os
+import ast
+
+from dataclasses import dataclass
+from typing import NamedTuple
+
+from python_minifier.ast_annotation import add_parent
+from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
+from python_minifier.rename.renamer import NameAssigner, add_assigned
+from python_minifier.module_printer import ModulePrinter
+from python_minifier.transforms.combine_imports import CombineImports
+from python_minifier.transforms.remove_annotations import RemoveAnnotations
+from python_minifier.transforms.remove_annotations_options import RemoveAnnotationsOptions
+from python_minifier.transforms.remove_pass import RemovePass
+from python_minifier.transforms.remove_literal_statements import RemoveLiteralStatements
+from python_minifier.transforms.remove_posargs import remove_posargs
+from python_minifier.transforms.remove_object_base import RemoveObject
+from python_minifier.transforms.remove_asserts import RemoveAsserts
+from python_minifier.transforms.remove_debug import RemoveDebug
+from python_minifier.transforms.remove_explicit_return_none import RemoveExplicitReturnNone
+from python_minifier.transforms.constant_folding import FoldConstants
+from python_minifier.transforms.remove_exception_brackets import remove_no_arg_exception_call
+from python_minifier.transforms.remove_unused_imports import remove_unused_imports
+
+
+@dataclass(frozen = True)
+class PackageMinifyOptions:
+    package_path: str
+    remove_annotations: RemoveAnnotationsOptions = RemoveAnnotationsOptions()
+    remove_pass: bool = True
+    remove_literal_statements: bool = True
+    combine_imports: bool = True
+    hoist_literals: bool = True
+    mangle: bool = False
+    preserved: frozenset[str] = frozenset({})
+    remove_unused_imports: bool = True
+    preserve_imports: frozenset[str] = frozenset({})
+    remove_object_base: bool = True
+    convert_posargs_to_args: bool = True
+    preserve_shebang: bool = False
+    remove_asserts: bool = False
+    remove_debug: bool = False
+    remove_explicit_return_none: bool = True
+    remove_builtin_exception_brackets: bool = True
+    constant_folding: bool = True
+
+class AbstractModule(NamedTuple):
+    package: str
+    module: ast.Module
+
+_EMPTY = AbstractModule('', None)
+
+class ProjectMinifier:
+    root_path: str
+    packages: dict[PackageMinifyOptions, dict[str, ast.Module]] # path -> PackageMinifyOptions
+    modules: dict[str, AbstractModule] = {} # dotted.name -> ast.Module
+
+    def __init__(self, root_path: str, /, *packages: PackageMinifyOptions, verbose: bool = False):
+        self.verbose = verbose
+        self.root_path = root_path
+        self.packages = {PackageMinifyOptions(**(package.__dict__ | {"package_path": os.path.abspath(package.package_path)})): {} for package in packages}
+
+    def _load_module(self, package: PackageMinifyOptions, root: str, file: str):
+        full_path = os.path.join(root, file)
+        rel_path = os.path.relpath(full_path, self.root_path)
+
+        module_name = rel_path.replace(os.path.sep, '.')[:-3]
+        is_package = False
+
+        if file == '__init__.py':
+            module_name = os.path.dirname(rel_path).replace(os.path.sep, '.')
+            if module_name == '.':
+                module_name = ''
+            is_package = True
+
+        if module_name == '.':
+            return
+
+        with open(full_path, 'r', encoding='utf-8') as f:
+            source = f.read().replace("#if !__debug__:", "")
+
+        try:
+            tree = ast.parse(source, full_path)
+        except SyntaxError as e:
+            print(f"Error parsing {full_path}: {e}")
+            return
+
+        add_parent(tree)
+        add_namespace(tree)
+
+        if package.combine_imports:
+            tree = CombineImports()(tree)
+
+        bind_names(tree)
+        resolve_names(tree)
+
+        self.packages[package][full_path] = tree
+        
+        if module_name:
+            self.modules[module_name] = AbstractModule(
+                module_name if is_package else '.'.join(module_name.split('.')[:-1]),
+                tree
+            )
+
+        if self.verbose:
+            print("Loaded module", full_path)
+
+    def load_project(self):
+        for package in self.packages.keys():
+            for root, _, files in os.walk(package.package_path):
+                for file in files:
+                    if file.endswith('.py'):
+                        self._load_module(package, root, file)
+
+    def resolve_relative_import(self, current_module_name, level, module_part):
+        current_pkg = self.modules.get(current_module_name, _EMPTY).package
+        pkg_parts = current_pkg.split('.') if current_pkg else []
+        
+        if level > 0:
+            pop_count = level - 1
+            if pop_count > len(pkg_parts):
+                return None
+            
+            if pop_count > 0:
+                target_pkg_parts = pkg_parts[:-pop_count]
+            else:
+                target_pkg_parts = pkg_parts
+            
+            target_pkg = '.'.join(target_pkg_parts)
+            
+            if module_part:
+                return f"{target_pkg}.{module_part}" if target_pkg else module_part
+            else:
+                return target_pkg
+        return None
+
+    def resolve_cross_module_references(self):
+        print("Resolving cross-module references...")
+        
+        path_to_name = {v.module: k for k, v in self.modules.items()}
+
+        for project, modules in self.packages.items():
+            for path, module in modules.items():
+                for binding in module.bindings:
+                    if binding.name in project.preserved:
+                        binding.disallow_rename()
+
+        for project, modules in self.packages.items():
+            for path, module in modules.items():
+                current_module_name = path_to_name.get(module)
+                bindings_to_remove = []
+
+                for binding in module.bindings:
+                    import_node = None
+                    alias_node = None
+
+                    for ref in binding.references:
+                        if isinstance(ref, ast.alias):
+                            alias_node = ref
+                            parent = ref
+                            while hasattr(parent, '_parent'):
+                                parent = parent._parent
+                                if isinstance(parent, ast.ImportFrom):
+                                    import_node = parent
+                                    break
+                            if import_node:
+                                break
+
+                    if import_node:
+                        target_module_name = None
+                        if import_node.level > 0:
+                            target_module_name = self.resolve_relative_import(
+                                current_module_name,
+                                import_node.level,
+                                import_node.module
+                            )
+                        else:
+                            target_module_name = import_node.module
+
+                        if target_module_name:
+                            target_module = self.modules.get(target_module_name)
+
+                            if target_module:
+                                imported_name = alias_node.name
+                                target_binding = None
+
+                                for b in target_module.module.bindings:
+                                    if b.name == imported_name:
+                                        target_binding = b
+                                        break
+
+                                if target_binding:
+                                    # [Fix 2] 무한 루프 방지: 자기 자신을 참조하는 경우 건너뜀
+                                    if target_binding is binding:
+                                        continue
+
+                                    if self.verbose:
+                                        print(f"Linked {path}: {binding.name} -> {target_module_name}.{target_binding.name}")
+
+                                    # [Fix 3] 보존 속성 전파: 로컬이 보존되어야 한다면 타겟(원본)도 보존되어야 함
+                                    if not binding.allow_rename or binding.name in project.preserved:
+                                        target_binding.disallow_rename()
+
+                                    alias_node._is_project_reference = True
+
+                                    # [Fix 4] 리스트 복사: 반복 중 리스트 수정으로 인한 오류 방지
+                                    for ref_node in list(binding.references):
+                                        target_binding.add_reference(ref_node)
+
+                                    bindings_to_remove.append(binding)
+
+                for b in bindings_to_remove:
+                    module.bindings.remove(b)
+
+    def minify(self):
+        self.load_project()
+        self.resolve_cross_module_references()
+
+        """
+        for project, modules in self.packages.items():
+            if project.remove_literal_statements:
+                for path, module in modules.items():
+                    modules[path] = RemoveLiteralStatements()(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_annotations:
+                for path, module in modules.items():
+                    modules[path] = RemoveAnnotations(project.remove_annotations)(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_pass:
+                for path, module in modules.items():
+                    modules[path] = RemovePass()(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_object_base:
+                for path, module in modules.items():
+                    modules[path] = RemoveObject()(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_asserts:
+                for path, module in modules.items():
+                    modules[path] = RemoveAsserts()(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_debug:
+                for path, module in modules.items():
+                    modules[path] = RemoveDebug()(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_explicit_return_none:
+                for path, module in modules.items():
+                    modules[path] = RemoveExplicitReturnNone()(module)
+
+        for project, modules in self.packages.items():
+            if project.constant_folding:
+                for path, module in modules.items():
+                    modules[path] = FoldConstants()(module)
+
+        for project, modules in self.packages.items():
+            if project.hoist_literals:
+                for path, module in modules.items():
+                    rename_literals(module)
+
+        for project, modules in self.packages.items():
+            if project.remove_builtin_exception_brackets:
+                for path, module in modules.items():
+                    if not module.tainted:
+                        remove_no_arg_exception_call(module)
+
+        for modules in self.packages.values():
+            for module in modules.values():
+                add_assigned(module)
+
+        assigner = NameAssigner()
+        for project, modules in self.packages.items():
+            for path, module in modules.items():
+                assigner(module, prefix_globals=True, reserved_globals=project.preserve_globals)
+
+        for project, modules in self.packages.items():
+            if project.convert_posargs_to_args:
+                for path, module in modules.items():
+                    remove_posargs(module)
+
+        for project, modules in self.packages.items():
+            for path, module in modules.items():
+                minified_code = ModulePrinter()(module)
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(minified_code)
+                print(f"Minified: {path}")
+        """
+
+        for package, modules in self.packages.items():
+            if package.remove_literal_statements:
+                for path, module in modules.items():
+                    modules[path] = RemoveLiteralStatements()(module)
+
+        for package, modules in self.packages.items():
+            if package.remove_annotations:
+                for path, module in modules.items():
+                    modules[path] = RemoveAnnotations(package.remove_annotations)(module)
+
+        for package, modules in self.packages.items():
+            if package.remove_object_base:
+                for path, module in modules.items():
+                    modules[path] = RemoveObject()(module)
+
+        for package, modules in self.packages.items():
+            if package.remove_explicit_return_none:
+                for path, module in modules.items():
+                    modules[path] = RemoveExplicitReturnNone()(module)
+
+        for package, modules in self.packages.items():
+            if package.constant_folding:
+                for path, module in modules.items():
+                    modules[path] = FoldConstants()(module)
+
+        for package, modules in self.packages.items():
+            if package.remove_builtin_exception_brackets:
+                for path, module in modules.items():
+                    if not module.tainted:
+                        remove_no_arg_exception_call(module)
+
+        for package, modules in self.packages.items():
+            if package.hoist_literals:
+                for path, module in modules.items():
+                    rename_literals(module)
+
+        for package, modules in self.packages.items():
+            for path, module in modules.items():
+                add_assigned(module)
+
+        assigner = NameAssigner()
+        for package, modules in self.packages.items():
+            if package.mangle:
+                for path, module in modules.items():
+                    assigner(module, prefix_globals=True, reserved_globals=package.preserved)
+
+        for package, modules in self.packages.items():
+            for path, module in modules.items():
+                if package.remove_asserts:
+                    module = RemoveAsserts()(module)
+
+                if package.remove_debug:
+                    module = RemoveDebug()(module)
+
+                if package.convert_posargs_to_args:
+                    module = remove_posargs(module)
+
+                if package.remove_unused_imports and not path.endswith("__init__.py"):
+                    module = remove_unused_imports(module, package.preserve_imports)
+
+                if package.remove_pass:
+                    modules[path] = RemovePass()(module)
+
+                modules[path] = module
+
+        for package, modules in self.packages.items():
+            for path, module in modules.items():
+                minified_code = ModulePrinter()(module)
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write(minified_code)
+                if self.verbose:
+                    print(f"Minified: {path}")
+
+    __call__ = minify

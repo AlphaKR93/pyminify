@@ -1,4 +1,6 @@
 import python_minifier.ast_compat as ast
+
+from typing import override
 from python_minifier.ast_annotation import get_parent, add_parent as add_node_parent
 
 from python_minifier.rename.mapper import add_parent
@@ -44,8 +46,30 @@ class SuiteTransformer(NodeVisitor):
     Transform suites of instructions
     """
 
-    def __call__(self, node):
-        return self.visit(node)
+    __call__ = NodeVisitor.visit
+
+    @override
+    def generic_visit(self, node):
+        for field, old_value in ast.iter_fields(node):
+            if isinstance(old_value, list):
+                new_values = []
+                for value in old_value:
+                    if isinstance(value, ast.AST):
+                        value = self.visit(value)
+                        if value is None:
+                            continue
+                        elif not isinstance(value, ast.AST):
+                            new_values.extend(value)
+                            continue
+                    new_values.append(value)
+                old_value[:] = new_values
+            elif isinstance(old_value, ast.AST):
+                new_node = self.visit(old_value)
+                if new_node is None:
+                    delattr(node, field)
+                else:
+                    setattr(node, field, new_node)
+        return node
 
     def visit_ClassDef(self, node):
         node.bases = [self.visit(b) for b in node.bases]
@@ -128,7 +152,6 @@ class SuiteTransformer(NodeVisitor):
         return node
 
     def visit_With(self, node):
-
         if hasattr(node, 'items'):
             node.items = [self.visit(i) for i in node.items]
         else:
@@ -149,28 +172,6 @@ class SuiteTransformer(NodeVisitor):
 
     def suite(self, node_list, parent):
         return [self.visit(node) for node in node_list]
-
-    def generic_visit(self, node):
-        for field, old_value in ast.iter_fields(node):
-            if isinstance(old_value, list):
-                new_values = []
-                for value in old_value:
-                    if isinstance(value, ast.AST):
-                        value = self.visit(value)
-                        if value is None:
-                            continue
-                        elif not isinstance(value, ast.AST):
-                            new_values.extend(value)
-                            continue
-                    new_values.append(value)
-                old_value[:] = new_values
-            elif isinstance(old_value, ast.AST):
-                new_node = self.visit(old_value)
-                if new_node is None:
-                    delattr(node, field)
-                else:
-                    setattr(node, field, new_node)
-        return node
 
     def add_child(self, child, parent, namespace=None):
         def nearest_function_namespace(node):

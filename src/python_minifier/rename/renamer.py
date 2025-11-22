@@ -58,9 +58,17 @@ def reservation_scope(namespace, binding):
     namespaces = {namespace}
 
     for node in binding.references:
-        while node is not namespace:
-            namespaces.add(node.namespace)
-            node = node.namespace
+        curr = node.namespace
+        while curr is not namespace:
+            namespaces.add(curr)
+            
+            # [수정됨] 모듈 경계에 도달하거나, 더 이상 부모가 없으면 중단 (무한 루프 방지)
+            if isinstance(curr, ast.Module):
+                break
+            if not hasattr(curr, 'namespace') or curr.namespace is curr:
+                break
+
+            curr = curr.namespace
 
     return namespaces
 
@@ -75,6 +83,9 @@ def add_assigned(node):
     """
 
     if is_namespace(node):
+        # 이미 초기화되어 있다면 덮어쓰지 않도록 할 수도 있지만, 
+        # 기본 로직은 호출 시 초기화하는 것입니다.
+        # NameAssigner 호출 시 제어합니다.
         node.assigned_names = set()
 
     for child in ast.iter_child_nodes(node):
@@ -171,7 +182,11 @@ class NameAssigner(object):
 
     def __call__(self, module, prefix_globals, reserved_globals=None):
         assert isinstance(module, ast.Module)
-        add_assigned(module)
+        
+        # [수정됨] assigned_names가 없는 경우에만 초기화합니다.
+        # 프로젝트 전체 Minify 시, 미리 초기화된 상태를 유지해야 교차 참조 시 이름 충돌을 방지할 수 있습니다.
+        if not getattr(module, 'assigned_names', None):
+            add_assigned(module)
 
         for namespace, binding in all_bindings(module):
             if binding.reserved is not None:
@@ -179,6 +194,10 @@ class NameAssigner(object):
                 reserve_name(binding.reserved, scope)
 
         if reserved_globals is not None:
+            # 모듈이 이미 초기화되어 있어도 reserved_globals는 추가해야 합니다.
+            if not hasattr(module, 'assigned_names'):
+                 # 안전장치 (위에서 처리되지만)
+                 module.assigned_names = set()
             for name in reserved_globals:
                 module.assigned_names.add(name)
 

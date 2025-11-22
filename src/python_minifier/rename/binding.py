@@ -346,15 +346,12 @@ class NameBinding(Binding):
         for node in self.references:
 
             if isinstance(node, ast.Name):
-
+                # ... (기존 코드와 동일)
                 if isinstance(node.ctx, (ast.Load, ast.Store, ast.Del)):
                     node.id = new_name
                 else:
-                    # Python 2 Param context
-
                     if arg_rename_in_place(node):
                         node.id = new_name
-
                     else:
                         if func_namespace_binding is None:
                             func_namespace_binding = node.namespace
@@ -366,12 +363,18 @@ class NameBinding(Binding):
             elif isinstance(node, ast.ClassDef):
                 node.name = new_name
             elif isinstance(node, ast.alias):
-                if new_name == node.name:
+                # [수정됨] 프로젝트 내부 참조(_is_project_reference)인 경우에만 import된 원본 이름을 변경합니다.
+                if getattr(node, '_is_project_reference', False):
+                    node.name = new_name
                     node.asname = None
                 else:
-                    node.asname = new_name
-            elif isinstance(node, ast.arg):
+                    # 외부 라이브러리 등은 asname을 사용하여 로컬 이름만 변경합니다.
+                    if new_name == node.name:
+                        node.asname = None
+                    else:
+                        node.asname = new_name
 
+            elif isinstance(node, ast.arg):
                 if arg_rename_in_place(node):
                     node.arg = new_name
 
