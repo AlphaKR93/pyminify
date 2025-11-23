@@ -116,8 +116,6 @@ class RemoveAnnotations(SuiteTransformer):
                 # 원래 노드의 정보를 새 노드에 복사합니다 (라인 번호 등).
                 # ast.copy_location은 관례적으로 사용되어 디버깅에 도움이 됩니다.
                 return ast.copy_location(new_node, node)
-            elif target.id == "__all__":
-                return ast.Pass()
 
         # 조건에 해당하지 않는 Assign 노드는 그대로 둡니다.
         return self.generic_visit(node)

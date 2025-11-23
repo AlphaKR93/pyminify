@@ -47,27 +47,45 @@ class UsedNameCollector(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def _extract_names_from_all(self, value_node):
+        """
+        __all__ 리스트/튜플에서 문자열 상수를 추출하여 used_names에 추가합니다.
+        """
+        if isinstance(value_node, (ast.List, ast.Tuple)):
+            for elt in value_node.elts:
+                if is_constant_node(elt, ast.Str):
+                    # 문자열 상수의 값을 사용된 이름으로 추가
+                    if hasattr(elt, "value") and isinstance(elt.value, str):
+                        self.used_names.add(elt.value)
+                    elif hasattr(elt, "s"):
+                        self.used_names.add(elt.s)
+
     def visit_Assign(self, node):
         """
-        __all__ 리스트에 포함된 이름들을 수집합니다.
+        __all__ = [...] 형태를 처리합니다.
         """
-        # targets가 __all__ 인지 확인
-        is_all = False
         for target in node.targets:
             if isinstance(target, ast.Name) and target.id == "__all__":
-                is_all = True
-                break
+                self._extract_names_from_all(node.value)
 
-        if is_all:
-            # value가 리스트인지 확인
-            if isinstance(node.value, (ast.List, ast.Tuple)):
-                for elt in node.value.elts:
-                    if is_constant_node(elt, ast.Str):
-                        # 문자열 상수의 값을 사용된 이름으로 추가
-                        if isinstance(elt, ast.Constant):  # Python 3.8+
-                            self.used_names.add(elt.value)
-                        elif hasattr(elt, "s"):  # Python < 3.8
-                            self.used_names.add(elt.s)
+        self.generic_visit(node)
+
+    def visit_AnnAssign(self, node):
+        """
+        __all__: list[str] = [...] 형태를 처리합니다.
+        """
+        if isinstance(node.target, ast.Name) and node.target.id == "__all__":
+            if node.value:
+                self._extract_names_from_all(node.value)
+
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node):
+        """
+        __all__ += [...] 형태를 처리합니다.
+        """
+        if isinstance(node.target, ast.Name) and node.target.id == "__all__":
+            self._extract_names_from_all(node.value)
 
         self.generic_visit(node)
 

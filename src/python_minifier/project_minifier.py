@@ -315,6 +315,7 @@ class ProjectMinifier:
             if package.remove_unused_imports:
                 for path, module in modules.items():
                     if not path.endswith("__init__.py"):
+                        print("Processing module:", path)
                         module = remove_unused_imports(module, package.preserved_imports)
 
         for package, modules in self.packages.items():
