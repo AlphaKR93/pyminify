@@ -9,7 +9,7 @@ import re
 import python_minifier.ast as ast
 
 from python_minifier.ast_compare import CompareError, compare_ast
-from python_minifier.module_printer import ModulePrinter
+from python_minifier.printer import ModulePrinter
 from python_minifier.rename import (
     add_namespace,
     allow_rename_globals,

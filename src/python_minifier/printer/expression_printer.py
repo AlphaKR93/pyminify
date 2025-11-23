@@ -2,7 +2,7 @@ import sys
 
 import python_minifier.ast as ast
 
-from python_minifier.token_printer import Delimiter, TokenPrinter
+from .token_printer import Delimiter, TokenPrinter
 from python_minifier.util import is_constant_node
 
 
@@ -718,21 +718,21 @@ class ExpressionPrinter(object):
     def visit_JoinedStr(self, node):
         assert isinstance(node, ast.JoinedStr)
 
-        import python_minifier.f_string
+        from .format import f_string
 
         if sys.version_info < (3, 12):
             pep701 = False
         else:
             pep701 = True
 
-        self.printer.fstring(str(python_minifier.f_string.OuterFString(node, pep701=pep701)))
+        self.printer.fstring(str(f_string.OuterFString(node, pep701=pep701)))
 
     def visit_TemplateStr(self, node):
         assert isinstance(node, ast.TemplateStr)
 
-        import python_minifier.t_string
+        from .format import t_string
 
-        self.printer.tstring(str(python_minifier.t_string.TString(node)))
+        self.printer.tstring(str(t_string.TString(node)))
 
     def visit_NamedExpr(self, node):
         self._expression(node.target)

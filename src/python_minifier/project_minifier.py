@@ -1,4 +1,5 @@
 import os
+import sys
 import python_minifier.ast as ast
 
 from dataclasses import dataclass
@@ -6,7 +7,8 @@ from typing import NamedTuple
 
 from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
 from python_minifier.rename.renamer import NameAssigner, add_assigned, name_filter
-from python_minifier.module_printer import ModulePrinter
+from python_minifier.printer import ModulePrinter
+from python_minifier.transforms.remove_environment_checks import RemoveEnvironmentChecks
 from python_minifier.transforms.combine_imports import CombineImports
 from python_minifier.transforms.remove_annotations import RemoveAnnotations
 from python_minifier.transforms.remove_annotations_options import RemoveAnnotationsOptions
@@ -39,6 +41,7 @@ class PackageMinifyOptions:
     preserve_shebang: bool = False
     remove_asserts: bool = False
     remove_debug: bool = False
+    remove_environment_checks: bool = True
     remove_explicit_return_none: bool = True
     remove_builtin_exception_brackets: bool = True
     constant_folding: bool = True
@@ -55,7 +58,15 @@ class ProjectMinifier:
     packages: dict[PackageMinifyOptions, dict[str, ast.Module]] # path -> PackageMinifyOptions
     modules: dict[str, AbstractModule] = {} # dotted.name -> ast.Module
 
-    def __init__(self, root_path: str, /, *packages: PackageMinifyOptions, verbose: bool = False):
+    def __init__(
+        self,
+        root_path: str,
+        /,
+        *packages: PackageMinifyOptions,
+        python_version: tuple[int, int, int, str, int] = sys.version_info,
+        verbose: bool = False
+    ):
+        self.python_version = python_version
         self.verbose = verbose
         self.root_path = root_path
         self.packages = {PackageMinifyOptions(**(package.__dict__ | {"package_path": os.path.abspath(package.package_path)})): {} for package in packages}
@@ -312,6 +323,9 @@ class ProjectMinifier:
 
                 if package.remove_debug:
                     module = RemoveDebug()(module)
+                    
+                if package.remove_environment_checks:
+                    module = RemoveEnvironmentChecks(self.python_version)(module)
 
                 if package.convert_posargs_to_args:
                     module = remove_posargs(module)
