@@ -563,6 +563,53 @@ class ProjectMinifier:
             # Collect and copy dependencies to the root_path (common location for all packages)
             # This ensures dependencies are vendored once and shared across all packages
             collector.collect(self.root_path)
+            
+            # After vendoring, we need to load the vendored dependencies
+            # Create a temporary package configuration for each vendored dependency directory
+            # We'll identify them by checking which directories exist at root_path
+            existing_package_dirs = {os.path.basename(pkg.package_path) for pkg in self.packages.keys()}
+            
+            for item in os.listdir(self.root_path):
+                item_path = os.path.join(self.root_path, item)
+                # Skip if it's not a directory, or if it's already a package, or starts with __
+                if not os.path.isdir(item_path) or item in existing_package_dirs or item.startswith('__'):
+                    continue
+                
+                # Check if this is a Python package (has .py files)
+                has_python = any(f.endswith('.py') for f in os.listdir(item_path) if os.path.isfile(os.path.join(item_path, f)))
+                
+                if has_python:
+                    # This is a vendored dependency, create a package config for it
+                    first_package = packages_with_vendoring[0]
+                    vendored_pkg = PackageMinifyOptions(
+                        package_path=item_path,
+                        remove_annotations=first_package.remove_annotations,
+                        remove_pass=first_package.remove_pass,
+                        remove_literal_statements=first_package.remove_literal_statements,
+                        combine_imports=first_package.combine_imports,
+                        hoist_literals=first_package.hoist_literals,
+                        mangle=first_package.mangle,
+                        preserved_names=first_package.preserved_names,
+                        remove_unused_imports=first_package.remove_unused_imports,
+                        preserved_imports=first_package.preserved_imports,
+                        remove_object_base=first_package.remove_object_base,
+                        convert_posargs_to_args=first_package.convert_posargs_to_args,
+                        preserve_shebang=first_package.preserve_shebang,
+                        remove_asserts=first_package.remove_asserts,
+                        remove_debug=first_package.remove_debug,
+                        remove_environment_checks=first_package.remove_environment_checks,
+                        remove_explicit_return_none=first_package.remove_explicit_return_none,
+                        remove_builtin_exception_brackets=first_package.remove_builtin_exception_brackets,
+                        constant_folding=first_package.constant_folding,
+                        allow_utf8_names=first_package.allow_utf8_names,
+                        remove_inline_functions=first_package.remove_inline_functions,
+                        remove_typing_variables=first_package.remove_typing_variables,
+                        obfuscate_module_names=first_package.obfuscate_module_names,
+                        vendor_dependencies=False  # Don't vendor again
+                    )
+                    self.packages[vendored_pkg] = {}
+                    if self.verbose:
+                        print(f"Added vendored dependency package: {item}")
         
         self.load_project()
         self.resolve_cross_module_references()
