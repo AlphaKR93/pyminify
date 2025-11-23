@@ -81,12 +81,12 @@ class NameBinder(NodeVisitor):
         self.visit_FunctionDef(node)
 
     def visit_alias(self, node):
-        if node.name == '*':
+        if node.name == "*":
             get_global_namespace(node).tainted = True
 
-        root_module = node.name.split('.')[0]
+        root_module = node.name.split(".")[0]
 
-        if root_module == 'timeit':
+        if root_module == "timeit":
             get_global_namespace(node).tainted = True
 
         if node.asname is not None:
@@ -99,7 +99,7 @@ class NameBinder(NodeVisitor):
                 binding = self.get_binding(root_module, node.namespace)
                 binding.add_reference(node)
 
-                if '.' in node.name:
+                if "." in node.name:
                     binding.disallow_rename()
 
     def visit_arguments(self, node):

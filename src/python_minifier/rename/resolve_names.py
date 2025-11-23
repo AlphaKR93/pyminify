@@ -20,7 +20,7 @@ def get_binding(name, namespace):
     else:
         # This is unresolved at global scope - is it a builtin?
         if name in dir(builtins):
-            if name in ['exec', 'eval', 'locals', 'globals', 'vars']:
+            if name in ["exec", "eval", "locals", "globals", "vars"]:
                 namespace.tainted = True
 
             binding = BuiltinBinding(name, namespace)
@@ -71,7 +71,6 @@ def resolve_names(node):
         binding.add_reference(node)
 
     elif isinstance(node, ast.alias):
-
         if node.asname is not None:
             if node.asname in node.namespace.nonlocal_names:
                 binding = get_binding_disallow_class_namespace_rename(node.asname, node.namespace)
@@ -79,13 +78,13 @@ def resolve_names(node):
 
         else:
             # This binds the root module only for a dotted import
-            root_module = node.name.split('.')[0]
+            root_module = node.name.split(".")[0]
 
             if root_module in node.namespace.nonlocal_names:
                 binding = get_binding_disallow_class_namespace_rename(root_module, node.namespace)
                 binding.add_reference(node)
 
-                if '.' in node.name:
+                if "." in node.name:
                     binding.disallow_rename()
 
     elif isinstance(node, ast.ExceptHandler) and node.name is not None:

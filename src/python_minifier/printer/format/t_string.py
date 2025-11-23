@@ -37,7 +37,7 @@ class TString(object):
     def is_correct_ast(self, code):
         """Check if the generated code produces the same AST"""
         try:
-            c = ast.parse(code, 'TString candidate', mode='eval')
+            c = ast.parse(code, "TString candidate", mode="eval")
             compare_ast(self.node, c.body)
             return True
         except Exception:
@@ -47,14 +47,14 @@ class TString(object):
         """Complete debug specifier candidates for an Interpolation node"""
         assert isinstance(value_node, ast.Interpolation)
 
-        conversion = ''
+        conversion = ""
         if value_node.conversion == 115:  # 's'
-            conversion = '!s'
+            conversion = "!s"
         elif value_node.conversion == 114 and value_node.format_spec is not None:
             # This is the default for debug specifiers, unless there's a format_spec
-            conversion = '!r'
+            conversion = "!r"
         elif value_node.conversion == 97:  # 'a'
-            conversion = '!a'
+            conversion = "!a"
 
         conversion_candidates = [x + conversion for x in partial_specifier_candidates]
 
@@ -62,21 +62,24 @@ class TString(object):
             # Handle format specifications in debug specifiers
             if isinstance(value_node.format_spec, ast.JoinedStr):
                 import python_minifier.f_string
-                format_specs = python_minifier.f_string.FormatSpec(value_node.format_spec, self.allowed_quotes, pep701=True).candidates()
-                conversion_candidates = [c + ':' + fs for c in conversion_candidates for fs in format_specs]
 
-        return [x + '}' for x in conversion_candidates]
+                format_specs = python_minifier.f_string.FormatSpec(
+                    value_node.format_spec, self.allowed_quotes, pep701=True
+                ).candidates()
+                conversion_candidates = [c + ":" + fs for c in conversion_candidates for fs in format_specs]
+
+        return [x + "}" for x in conversion_candidates]
 
     def candidates(self):
         """Generate all possible representations"""
         actual_candidates = []
 
         # Normal t-string candidates
-        actual_candidates.extend(self._generate_candidates_with_processor('t', self.str_for))
+        actual_candidates.extend(self._generate_candidates_with_processor("t", self.str_for))
 
         # Raw t-string candidates (if we detect backslashes)
         if self._contains_literal_backslashes():
-            actual_candidates.extend(self._generate_candidates_with_processor('rt', self.raw_str_for))
+            actual_candidates.extend(self._generate_candidates_with_processor("rt", self.raw_str_for))
 
         return filter(self.is_correct_ast, actual_candidates)
 
@@ -85,7 +88,7 @@ class TString(object):
         candidates = []
 
         for quote in self.allowed_quotes:
-            quote_candidates = ['']
+            quote_candidates = [""]
             debug_specifier_candidates = []
 
             for v in self.node.values:
@@ -95,11 +98,12 @@ class TString(object):
                     # Could this be used as a debug specifier?
                     if len(quote_candidates) < 10:
                         import re
-                        debug_specifier = re.match(r'.*=\s*$', v.value)
+
+                        debug_specifier = re.match(r".*=\s*$", v.value)
                         if debug_specifier:
                             # Maybe! Save for potential debug specifier completion
                             try:
-                                debug_specifier_candidates = [x + '{' + v.value for x in quote_candidates]
+                                debug_specifier_candidates = [x + "{" + v.value for x in quote_candidates]
                             except Exception:
                                 continue
 
@@ -116,13 +120,15 @@ class TString(object):
 
                         # Regular interpolation processing
                         interpolation_candidates = InterpolationValue(v).get_candidates()
-                        quote_candidates = [x + y for x in quote_candidates for y in interpolation_candidates] + completed
+                        quote_candidates = [
+                            x + y for x in quote_candidates for y in interpolation_candidates
+                        ] + completed
 
                         debug_specifier_candidates = []
                     except Exception:
                         continue
                 else:
-                    raise RuntimeError('Unexpected TemplateStr value: %r' % v)
+                    raise RuntimeError("Unexpected TemplateStr value: %r" % v)
 
             candidates.extend([prefix + quote + x + quote for x in quote_candidates])
 
@@ -132,10 +138,10 @@ class TString(object):
         """Convert string literal to properly escaped form"""
         # Use MiniString for optimal string representation
         # Always allowed due to PEP 701 - no backslash restrictions
-        mini_s = str(MiniString(s, quote)).replace('{', '{{').replace('}', '}}')
+        mini_s = str(MiniString(s, quote)).replace("{", "{{").replace("}", "}}")
 
-        if mini_s == '':
-            return '\\\n'
+        if mini_s == "":
+            return "\\\n"
         return mini_s
 
     def raw_str_for(self, s):
@@ -143,7 +149,7 @@ class TString(object):
         Generate string representation for raw t-strings.
         Don't escape backslashes like MiniString does.
         """
-        return s.replace('{', '{{').replace('}', '}}')
+        return s.replace("{", "{{").replace("}", "}}")
 
     def _contains_literal_backslashes(self):
         """
@@ -152,31 +158,31 @@ class TString(object):
         """
         for node in ast.walk(self.node):
             if is_constant_node(node, ast.Str):
-                if '\\' in node.s:
+                if "\\" in node.s:
                     return True
         return False
 
     def __str__(self):
         """Generate the shortest valid t-string representation"""
         if len(self.node.values) == 0:
-            return 't' + min(self.allowed_quotes, key=len) * 2
+            return "t" + min(self.allowed_quotes, key=len) * 2
 
         candidates = list(self.candidates())
 
         # Validate all candidates
         for candidate in candidates:
             try:
-                minified_t_string = ast.parse(candidate, 'python_minifier.t_string output', mode='eval').body
+                minified_t_string = ast.parse(candidate, "python_minifier.t_string output", mode="eval").body
             except SyntaxError as syntax_error:
-                raise UnstableMinification(syntax_error, '', candidate)
+                raise UnstableMinification(syntax_error, "", candidate)
 
             try:
                 compare_ast(self.node, minified_t_string)
             except CompareError as compare_error:
-                raise UnstableMinification(compare_error, '', candidate)
+                raise UnstableMinification(compare_error, "", candidate)
 
         if not candidates:
-            raise ValueError('Unable to create representation for t-string')
+            raise ValueError("Unable to create representation for t-string")
 
         return min(candidates, key=len)
 
@@ -195,33 +201,34 @@ class InterpolationValue(ExpressionPrinter):
         self.node = node
         # Always use all quotes - no restrictions due to PEP 701
         self.allowed_quotes = ['"', "'", '"""', "'''"]
-        self.candidates = ['']
+        self.candidates = [""]
 
     def get_candidates(self):
         """Generate all possible representations of this interpolation"""
 
-        self.printer.delimiter('{')
+        self.printer.delimiter("{")
 
         if self.is_curly(self.node.value):
-            self.printer.delimiter(' ')
+            self.printer.delimiter(" ")
 
         self._expression(self.node.value)
 
         # Handle conversion specifiers
         if self.node.conversion == 115:  # 's'
-            self.printer.append('!s', TokenTypes.Delimiter)
+            self.printer.append("!s", TokenTypes.Delimiter)
         elif self.node.conversion == 114:  # 'r'
-            self.printer.append('!r', TokenTypes.Delimiter)
+            self.printer.append("!r", TokenTypes.Delimiter)
         elif self.node.conversion == 97:  # 'a'
-            self.printer.append('!a', TokenTypes.Delimiter)
+            self.printer.append("!a", TokenTypes.Delimiter)
 
         # Handle format specifications
         if self.node.format_spec is not None:
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
 
             # Format spec is a JoinedStr (f-string) in the AST
             if isinstance(self.node.format_spec, ast.JoinedStr):
                 import python_minifier.f_string
+
                 # Use f-string processing for format specs
                 format_candidates = python_minifier.f_string.OuterFString(
                     self.node.format_spec, pep701=True
@@ -230,20 +237,22 @@ class InterpolationValue(ExpressionPrinter):
                 format_parts = []
                 for fmt in format_candidates:
                     # Handle both f"..." and rf"..." patterns
-                    if fmt.startswith('rf'):
+                    if fmt.startswith("rf"):
                         # Remove rf prefix and outer quotes
                         inner = fmt[2:]
-                    elif fmt.startswith('f'):
+                    elif fmt.startswith("f"):
                         # Remove f prefix and outer quotes
                         inner = fmt[1:]
                     else:
                         continue
 
-                    if (inner.startswith('"') and inner.endswith('"')) or \
-                       (inner.startswith("'") and inner.endswith("'")):
+                    if (inner.startswith('"') and inner.endswith('"')) or (
+                        inner.startswith("'") and inner.endswith("'")
+                    ):
                         format_parts.append(inner[1:-1])
-                    elif (inner.startswith('"""') and inner.endswith('"""')) or \
-                         (inner.startswith("'''") and inner.endswith("'''")):
+                    elif (inner.startswith('"""') and inner.endswith('"""')) or (
+                        inner.startswith("'''") and inner.endswith("'''")
+                    ):
                         format_parts.append(inner[3:-3])
                     else:
                         format_parts.append(inner)
@@ -254,7 +263,7 @@ class InterpolationValue(ExpressionPrinter):
                 # Simple constant format spec
                 self.printer.append(str(self.node.format_spec), TokenTypes.Delimiter)
 
-        self.printer.delimiter('}')
+        self.printer.delimiter("}")
 
         self._finalize()
         return self.candidates
@@ -286,10 +295,12 @@ class InterpolationValue(ExpressionPrinter):
         if isinstance(node.value, str):
             # Use Str class from f_string module for string handling
             from python_minifier.f_string import Str
+
             self.printer.append(str(Str(node.value, self.allowed_quotes, pep701=True)), TokenTypes.NonNumberLiteral)
         elif isinstance(node.value, bytes):
             # Use Bytes class from f_string module for bytes handling
             from python_minifier.f_string import Bytes
+
             self.printer.append(str(Bytes(node.value, self.allowed_quotes)), TokenTypes.NonNumberLiteral)
         else:
             # Other constants (numbers, None, etc.)
@@ -299,7 +310,7 @@ class InterpolationValue(ExpressionPrinter):
         """Handle nested t-strings"""
         assert isinstance(node, ast.TemplateStr)
         if self.printer.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.printer.delimiter(' ')
+            self.printer.delimiter(" ")
         # Nested t-string - no quote restrictions due to PEP 701
         self._append(TString(node).candidates())
 
@@ -307,22 +318,23 @@ class InterpolationValue(ExpressionPrinter):
         """Handle nested f-strings in t-strings"""
         assert isinstance(node, ast.JoinedStr)
         if self.printer.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.printer.delimiter(' ')
+            self.printer.delimiter(" ")
 
         import python_minifier.f_string
+
         # F-strings nested in t-strings also benefit from PEP 701
         self._append(python_minifier.f_string.OuterFString(node, pep701=True).candidates())
 
     def visit_Lambda(self, node):
         """Handle lambda expressions in interpolations"""
-        self.printer.delimiter('(')
+        self.printer.delimiter("(")
         super().visit_Lambda(node)
-        self.printer.delimiter(')')
+        self.printer.delimiter(")")
 
     def _finalize(self):
         """Finalize the current printer state"""
         self.candidates = [x + str(self.printer) for x in self.candidates]
-        self.printer._code = ''
+        self.printer._code = ""
 
     def _append(self, candidates):
         """Append multiple candidate strings"""

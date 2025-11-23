@@ -22,7 +22,7 @@ class Binding(object):
         self._reserved = None
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
     @property
     def name(self):
@@ -137,7 +137,7 @@ class Binding(object):
                 pass
 
             else:
-                raise AssertionError('Unknown reference node')
+                raise AssertionError("Unknown reference node")
 
         return additional_bytes + (2 if arg_rename else 0)
 
@@ -190,7 +190,7 @@ class Binding(object):
                 pass
 
             else:
-                raise AssertionError('Unknown reference node')
+                raise AssertionError("Unknown reference node")
 
         return mentions + (1 if arg_rename else 0)
 
@@ -239,7 +239,7 @@ class Binding(object):
                 mentions += 1
 
             else:
-                raise AssertionError('Unknown reference node')
+                raise AssertionError("Unknown reference node")
 
         return mentions + (1 if arg_rename else 0)
 
@@ -301,12 +301,16 @@ class NameBinding(Binding):
         super(NameBinding, self).__init__(name, *args, **kwargs)
         self.export_as = None
 
-        if name.startswith('__') and name.endswith('__'):
+        if name.startswith("__") and name.endswith("__"):
             # System defined name
             self.disallow_rename()
 
     def __repr__(self):
-        return self.__class__.__name__ + '(name=%r, allow_rename=%r) <references=%r>' % (self._name, self._allow_rename, len(self._references))
+        return self.__class__.__name__ + "(name=%r, allow_rename=%r) <references=%r>" % (
+            self._name,
+            self._allow_rename,
+            len(self._references),
+        )
 
     def should_rename(self, new_name):
         """
@@ -322,7 +326,9 @@ class NameBinding(Binding):
         old_mentions = self.old_mention_count()
         new_mentions = self.new_mention_count()
         additional_bytes = self.additional_byte_cost()
-        rename_cost = (old_mentions * utf8_byte_len(self._name)) + (new_mentions * utf8_byte_len(new_name)) + additional_bytes
+        rename_cost = (
+            (old_mentions * utf8_byte_len(self._name)) + (new_mentions * utf8_byte_len(new_name)) + additional_bytes
+        )
 
         if self.export_as:
             # Cost of adding 'export_as=new_name' (plus newline/semicolon estimate)
@@ -350,7 +356,6 @@ class NameBinding(Binding):
         func_namespace_binding = None
 
         for node in self.references:
-
             if isinstance(node, ast.Name):
                 # ... (기존 코드와 동일)
                 if isinstance(node.ctx, (ast.Load, ast.Store, ast.Del)):
@@ -370,7 +375,7 @@ class NameBinding(Binding):
                 node.name = new_name
             elif isinstance(node, ast.alias):
                 # [수정됨] 프로젝트 내부 참조(_is_project_reference)인 경우에만 import된 원본 이름을 변경합니다.
-                if getattr(node, '_is_project_reference', False):
+                if getattr(node, "_is_project_reference", False):
                     node.name = new_name
                     node.asname = None
                 else:
@@ -395,9 +400,8 @@ class NameBinding(Binding):
             elif isinstance(node, (ast.Global, ast.Nonlocal)):
                 node.names = [new_name if n == self._name else n for n in node.names]
             elif isinstance(node, ast.arguments):
-
-                rename_vararg = (node.vararg == self._name) and not getattr(node, 'vararg_renamed', False)
-                rename_kwarg = (node.kwarg == self._name) and not getattr(node, 'kwarg_renamed', False)
+                rename_vararg = (node.vararg == self._name) and not getattr(node, "vararg_renamed", False)
+                rename_kwarg = (node.kwarg == self._name) and not getattr(node, "kwarg_renamed", False)
 
                 if rename_vararg:
                     node.vararg = new_name
@@ -448,11 +452,11 @@ class BuiltinBinding(NameBinding):
         self.namespace = namespace
 
         # These builtins actually act like keywords, so should not be changed
-        if name == 'super':
+        if name == "super":
             # If we replace 'super' with another name the compiler will neglect to create the
             # __class__ implicit closure reference, breaking the zero argument super() call.
             self.disallow_rename()
-        elif name == 'object':
+        elif name == "object":
             # Classes must inherit from object to become a new-style class in python2
             self.disallow_rename()
 

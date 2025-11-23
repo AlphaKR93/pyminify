@@ -27,12 +27,25 @@ class RemoveAnnotationsOptions:
     aggressively_minify_class_attributes: bool = False
 
     def __repr__(self):
-        return 'RemoveAnnotationsOptions(remove_variable_annotations=%r, remove_return_annotations=%r, remove_argument_annotations=%r, remove_class_attribute_annotations=%r)' % (
-            self.remove_variable_annotations, self.remove_return_annotations, self.remove_argument_annotations, self.remove_class_attribute_annotations
+        return (
+            "RemoveAnnotationsOptions(remove_variable_annotations=%r, remove_return_annotations=%r, remove_argument_annotations=%r, remove_class_attribute_annotations=%r)"
+            % (
+                self.remove_variable_annotations,
+                self.remove_return_annotations,
+                self.remove_argument_annotations,
+                self.remove_class_attribute_annotations,
+            )
         )
 
     def __nonzero__(self):
-        return any((self.remove_variable_annotations, self.remove_return_annotations, self.remove_argument_annotations, self.remove_class_attribute_annotations))
+        return any(
+            (
+                self.remove_variable_annotations,
+                self.remove_return_annotations,
+                self.remove_argument_annotations,
+                self.remove_class_attribute_annotations,
+            )
+        )
 
     def __bool__(self):
         return self.__nonzero__()

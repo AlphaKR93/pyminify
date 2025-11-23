@@ -8,7 +8,7 @@ from python_minifier.rename.mapper import add_parent
 class NodeVisitor(object):
     def visit(self, node):
         """Visit a node."""
-        method = 'visit_' + node.__class__.__name__
+        method = "visit_" + node.__class__.__name__
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node)
 
@@ -24,17 +24,17 @@ class NodeVisitor(object):
 
     def visit_Constant(self, node):
         if node.value in [None, True, False]:
-            method = 'visit_NameConstant'
+            method = "visit_NameConstant"
         elif isinstance(node.value, (int, float, complex)):
-            method = 'visit_Num'
+            method = "visit_Num"
         elif isinstance(node.value, str):
-            method = 'visit_Str'
+            method = "visit_Str"
         elif isinstance(node.value, bytes):
-            method = 'visit_Bytes'
+            method = "visit_Bytes"
         elif node.value == Ellipsis:
-            method = 'visit_Ellipsis'
+            method = "visit_Ellipsis"
         else:
-            raise RuntimeError('Unknown Constant value %r' % type(node.value))
+            raise RuntimeError("Unknown Constant value %r" % type(node.value))
 
         visitor = getattr(self, method, self.generic_visit)
         return visitor(node)
@@ -73,19 +73,19 @@ class SuiteTransformer(NodeVisitor):
     def visit_ClassDef(self, node):
         node.bases = [self.visit(b) for b in node.bases]
 
-        if hasattr(node, 'type_params') and node.type_params is not None:
+        if hasattr(node, "type_params") and node.type_params is not None:
             node.type_params = [self.visit(t) for t in node.type_params]
 
         node.body = self.suite(node.body, parent=node)
         node.decorator_list = [self.visit(d) for d in node.decorator_list]
 
-        if hasattr(node, 'starargs') and node.starargs is not None:
+        if hasattr(node, "starargs") and node.starargs is not None:
             node.starargs = self.visit(node.starargs)
 
-        if hasattr(node, 'kwargs') and node.kwargs is not None:
+        if hasattr(node, "kwargs") and node.kwargs is not None:
             node.kwargs = self.visit(node.kwargs)
 
-        if hasattr(node, 'keywords'):
+        if hasattr(node, "keywords"):
             node.keywords = [self.visit(kw) for kw in node.keywords]
 
         return node
@@ -95,7 +95,7 @@ class SuiteTransformer(NodeVisitor):
         node.body = self.suite(node.body, parent=node)
         node.decorator_list = [self.visit(d) for d in node.decorator_list]
 
-        if hasattr(node, 'returns') and node.returns is not None:
+        if hasattr(node, "returns") and node.returns is not None:
             node.returns = self.visit(node.returns)
 
         return node
@@ -151,7 +151,7 @@ class SuiteTransformer(NodeVisitor):
         return node
 
     def visit_With(self, node):
-        if hasattr(node, 'items'):
+        if hasattr(node, "items"):
             node.items = [self.visit(i) for i in node.items]
         else:
             if node.context_expr:

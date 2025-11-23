@@ -15,10 +15,10 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         """
         super(RemoveEnvironmentChecks, self).__init__()
         self.target_version = target_version
-        self.type_checking_names = {'TYPE_CHECKING'}
-        self.typing_module_names = {'typing'}
-        self.version_info_names = {'version_info'}
-        self.sys_module_names = {'sys'}
+        self.type_checking_names = {"TYPE_CHECKING"}
+        self.typing_module_names = {"typing"}
+        self.version_info_names = {"version_info"}
+        self.sys_module_names = {"sys"}
 
     def visit_Module(self, node):
         # Scan imports to find aliases
@@ -29,19 +29,19 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         for stmt in node.body:
             if isinstance(stmt, ast.Import):
                 for alias in stmt.names:
-                    if alias.name == 'typing':
-                        self.typing_module_names.add(alias.asname or 'typing')
-                    elif alias.name == 'sys':
-                        self.sys_module_names.add(alias.asname or 'sys')
+                    if alias.name == "typing":
+                        self.typing_module_names.add(alias.asname or "typing")
+                    elif alias.name == "sys":
+                        self.sys_module_names.add(alias.asname or "sys")
             elif isinstance(stmt, ast.ImportFrom):
-                if stmt.module == 'typing':
+                if stmt.module == "typing":
                     for alias in stmt.names:
-                        if alias.name == 'TYPE_CHECKING':
-                            self.type_checking_names.add(alias.asname or 'TYPE_CHECKING')
-                elif stmt.module == 'sys':
+                        if alias.name == "TYPE_CHECKING":
+                            self.type_checking_names.add(alias.asname or "TYPE_CHECKING")
+                elif stmt.module == "sys":
                     for alias in stmt.names:
-                        if alias.name == 'version_info':
-                            self.version_info_names.add(alias.asname or 'version_info')
+                        if alias.name == "version_info":
+                            self.version_info_names.add(alias.asname or "version_info")
 
     def __call__(self, node):
         return self.visit(node)
@@ -60,12 +60,16 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         # Check left side is sys.version_info
         left = node.left
         is_version_info = False
-        
+
         # Case 1: sys.version_info (or alias.version_info)
         if isinstance(left, ast.Attribute):
-            if isinstance(left.value, ast.Name) and left.value.id in self.sys_module_names and left.attr == 'version_info':
+            if (
+                isinstance(left.value, ast.Name)
+                and left.value.id in self.sys_module_names
+                and left.attr == "version_info"
+            ):
                 is_version_info = True
-        
+
         # Case 2: version_info (imported or aliased)
         elif isinstance(left, ast.Name) and left.id in self.version_info_names:
             is_version_info = True
@@ -92,7 +96,7 @@ class RemoveEnvironmentChecks(SuiteTransformer):
             return None
 
         op = node.ops[0]
-        
+
         if isinstance(op, ast.Gt):
             return self.target_version > check_version
         elif isinstance(op, ast.GtE):
@@ -105,7 +109,7 @@ class RemoveEnvironmentChecks(SuiteTransformer):
             return self.target_version == check_version
         elif isinstance(op, ast.NotEq):
             return self.target_version != check_version
-            
+
         return None
 
     def _is_type_checking(self, node):
@@ -115,14 +119,18 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         # Case 1: TYPE_CHECKING (or alias)
         if isinstance(node, ast.Name) and node.id in self.type_checking_names:
             return True
-        
+
         # Case 2: typing.TYPE_CHECKING (or alias.TYPE_CHECKING)
         if isinstance(node, ast.Attribute):
-            if isinstance(node.value, ast.Name) and node.value.id in self.typing_module_names and node.attr == 'TYPE_CHECKING':
+            if (
+                isinstance(node.value, ast.Name)
+                and node.value.id in self.typing_module_names
+                and node.attr == "TYPE_CHECKING"
+            ):
                 return True
-                
+
         return False
-    
+
     def _is_not_type_checking(self, node):
         """
         Check if node is 'not TYPE_CHECKING'
@@ -142,15 +150,15 @@ class RemoveEnvironmentChecks(SuiteTransformer):
             else:
                 # Remove the If node entirely
                 return None
-        
+
         # 2. not TYPE_CHECKING
         if self._is_not_type_checking(node.test):
-             # if not TYPE_CHECKING: ... -> Keep body, remove orelse
-             return self.suite(node.body, parent=ast.get_parent(node))
+            # if not TYPE_CHECKING: ... -> Keep body, remove orelse
+            return self.suite(node.body, parent=ast.get_parent(node))
 
         # 3. sys.version_info
         version_result = self._evaluate_version_check(node.test)
-        
+
         if version_result is True:
             # Condition is True: Keep body
             return self.suite(node.body, parent=ast.get_parent(node))
@@ -160,13 +168,13 @@ class RemoveEnvironmentChecks(SuiteTransformer):
                 return self.suite(node.orelse, parent=ast.get_parent(node))
             else:
                 return None
-        
+
         # 4. Undecidable: Recurse into children
         node.test = self.visit(node.test)
         node.body = self.suite(node.body, parent=node)
         if node.orelse:
             node.orelse = self.suite(node.orelse, parent=node)
-            
+
         return node
 
     def suite(self, node_list, parent):

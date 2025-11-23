@@ -20,10 +20,10 @@ class RemoveAnnotations(SuiteTransformer):
     def _is_runtime_annotation(self, node):
         """Check if an annotation is likely used at runtime (e.g., Annotated, Query)."""
         if isinstance(node, ast.Subscript):
-            if isinstance(node.value, ast.Name) and node.value.id == 'Annotated':
+            if isinstance(node.value, ast.Name) and node.value.id == "Annotated":
                 return True
         elif isinstance(node, ast.Constant) and isinstance(node.value, str):
-            if 'Annotated' in node.value:
+            if "Annotated" in node.value:
                 return True
         elif isinstance(node, ast.Call):
             return True
@@ -31,9 +31,9 @@ class RemoveAnnotations(SuiteTransformer):
 
     def visit_Call(self, node):
         is_cast = False
-        if isinstance(node.func, ast.Name) and node.func.id == 'cast':
+        if isinstance(node.func, ast.Name) and node.func.id == "cast":
             is_cast = True
-        elif isinstance(node.func, ast.Attribute) and node.func.attr == 'cast':
+        elif isinstance(node.func, ast.Attribute) and node.func.attr == "cast":
             is_cast = True
 
         if is_cast and len(node.args) == 2 and not node.keywords:
@@ -46,10 +46,10 @@ class RemoveAnnotations(SuiteTransformer):
         node.body = self.suite(node.body, parent=node)
         node.decorator_list = [self.visit(d) for d in node.decorator_list]
 
-        if hasattr(node, 'type_params'):
+        if hasattr(node, "type_params"):
             node.type_params = []
 
-        if hasattr(node, 'returns') and node.returns is not None:
+        if hasattr(node, "returns") and node.returns is not None:
             if self._options.remove_return_annotations:
                 node.returns = None
             elif not self._is_runtime_annotation(node.returns):
@@ -62,22 +62,22 @@ class RemoveAnnotations(SuiteTransformer):
     def visit_arguments(self, node):
         assert isinstance(node, ast.arguments)
 
-        if hasattr(node, 'posonlyargs'):
+        if hasattr(node, "posonlyargs"):
             node.posonlyargs = [self.visit_arg(a) for a in node.posonlyargs]
         if node.args:
             node.args = [self.visit_arg(a) for a in node.args]
-        if hasattr(node, 'kwonlyargs'):
+        if hasattr(node, "kwonlyargs"):
             node.kwonlyargs = [self.visit_arg(a) for a in node.kwonlyargs]
 
-        if node.vararg and hasattr(node.vararg, 'annotation'):
+        if node.vararg and hasattr(node.vararg, "annotation"):
             self.visit_arg(node.vararg)
-        if node.kwarg and hasattr(node.kwarg, 'annotation'):
+        if node.kwarg and hasattr(node.kwarg, "annotation"):
             self.visit_arg(node.kwarg)
 
         return node
 
     def visit_arg(self, node):
-        if not hasattr(node, 'annotation') or node.annotation is None:
+        if not hasattr(node, "annotation") or node.annotation is None:
             return node
 
         if node.annotation is None:
@@ -91,7 +91,7 @@ class RemoveAnnotations(SuiteTransformer):
             # unless they look like runtime annotations (e.g. "Annotated[...]")
             if isinstance(node.annotation, ast.Constant) and not self._is_runtime_annotation(node.annotation):
                 node.annotation = None
-        
+
         return node
 
     def visit_Assign(self, node):
@@ -130,7 +130,9 @@ class RemoveAnnotations(SuiteTransformer):
             # Handle local variables
             if self._options.remove_variable_annotations:
                 if node.value:
-                    return self.add_child(ast.Assign(targets=[node.target], value=node.value), parent=parent, namespace=node.namespace)
+                    return self.add_child(
+                        ast.Assign(targets=[node.target], value=node.value), parent=parent, namespace=node.namespace
+                    )
                 else:
                     return self.add_child(ast.Pass(), parent=parent, namespace=node.namespace)
             else:
@@ -150,7 +152,7 @@ class RemoveAnnotations(SuiteTransformer):
             # Rule: String annotations are always candidates for processing.
             should_process = True
             try:
-                ann_ast = ast.parse(node.annotation.value, mode='eval').body
+                ann_ast = ast.parse(node.annotation.value, mode="eval").body
                 simplified_node = None
                 if isinstance(ann_ast, ast.Subscript):
                     simplified_node = ann_ast.value

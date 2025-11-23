@@ -15,42 +15,80 @@ from python_minifier.rename.binding import BuiltinBinding
 
 # These are always exceptions, in every version of python
 builtin_exceptions = [
-    'SyntaxError', 'Exception', 'ValueError', 'BaseException', 'MemoryError', 'RuntimeError', 'DeprecationWarning', 'UnicodeEncodeError', 'KeyError', 'LookupError', 'TypeError', 'BufferError',
-    'ImportError', 'OSError', 'StopIteration', 'ArithmeticError', 'UserWarning', 'PendingDeprecationWarning', 'RuntimeWarning', 'IndentationError', 'UnicodeTranslateError', 'UnboundLocalError',
-    'AttributeError', 'EOFError', 'UnicodeWarning', 'BytesWarning', 'NameError', 'IndexError', 'TabError', 'SystemError', 'OverflowError', 'FutureWarning', 'SystemExit', 'Warning',
-    'FloatingPointError', 'ReferenceError', 'UnicodeError', 'AssertionError', 'SyntaxWarning', 'UnicodeDecodeError', 'GeneratorExit', 'ImportWarning', 'KeyboardInterrupt', 'ZeroDivisionError',
-    'NotImplementedError',
+    "SyntaxError",
+    "Exception",
+    "ValueError",
+    "BaseException",
+    "MemoryError",
+    "RuntimeError",
+    "DeprecationWarning",
+    "UnicodeEncodeError",
+    "KeyError",
+    "LookupError",
+    "TypeError",
+    "BufferError",
+    "ImportError",
+    "OSError",
+    "StopIteration",
+    "ArithmeticError",
+    "UserWarning",
+    "PendingDeprecationWarning",
+    "RuntimeWarning",
+    "IndentationError",
+    "UnicodeTranslateError",
+    "UnboundLocalError",
+    "AttributeError",
+    "EOFError",
+    "UnicodeWarning",
+    "BytesWarning",
+    "NameError",
+    "IndexError",
+    "TabError",
+    "SystemError",
+    "OverflowError",
+    "FutureWarning",
+    "SystemExit",
+    "Warning",
+    "FloatingPointError",
+    "ReferenceError",
+    "UnicodeError",
+    "AssertionError",
+    "SyntaxWarning",
+    "UnicodeDecodeError",
+    "GeneratorExit",
+    "ImportWarning",
+    "KeyboardInterrupt",
+    "ZeroDivisionError",
+    "NotImplementedError",
     # These are exceptions in 3.3+
-    'ChildProcessError',
-    'ConnectionError',
-    'BrokenPipeError',
-    'ConnectionAbortedError',
-    'ConnectionRefusedError',
-    'ConnectionResetError',
-    'FileExistsError',
-    'FileNotFoundError',
-    'InterruptedError',
-    'IsADirectoryError',
-    'NotADirectoryError',
-    'PermissionError',
-    'ProcessLookupError',
-    'TimeoutError',
-    'ResourceWarning',
-    'StopAsyncIteration',   # 3.5+
-    'RecursionError',       # 3.5+
-    'ModuleNotFoundError',  # 3.6+
+    "ChildProcessError",
+    "ConnectionError",
+    "BrokenPipeError",
+    "ConnectionAbortedError",
+    "ConnectionRefusedError",
+    "ConnectionResetError",
+    "FileExistsError",
+    "FileNotFoundError",
+    "InterruptedError",
+    "IsADirectoryError",
+    "NotADirectoryError",
+    "PermissionError",
+    "ProcessLookupError",
+    "TimeoutError",
+    "ResourceWarning",
+    "StopAsyncIteration",  # 3.5+
+    "RecursionError",  # 3.5+
+    "ModuleNotFoundError",  # 3.6+
 ]
 
 # These are exceptions in 3.10+
-builtin_exceptions_3_10 = [
-    'EncodingWarning'
-]
+builtin_exceptions_3_10 = ["EncodingWarning"]
 
 # These are exceptions in 3.11+
 builtin_exceptions_3_11 = [
-    'BaseExceptionGroup',
-    'ExceptionGroup',
-    'BaseExceptionGroup',
+    "BaseExceptionGroup",
+    "ExceptionGroup",
+    "BaseExceptionGroup",
 ]
 
 

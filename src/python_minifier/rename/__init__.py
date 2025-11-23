@@ -7,11 +7,11 @@ from .util import allow_rename_globals, allow_rename_locals
 
 
 __all__ = (
-    'bind_names',
-    'add_namespace',
-    'rename_literals',
-    'rename',
-    'resolve_names',
-    'allow_rename_globals',
-    'allow_rename_locals',
+    "bind_names",
+    "add_namespace",
+    "rename_literals",
+    "rename",
+    "resolve_names",
+    "allow_rename_globals",
+    "allow_rename_locals",
 )

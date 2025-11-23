@@ -9,10 +9,12 @@ def remove_unused_imports(module, preserved):
     collector.visit(module)
     return UnusedImportRemover(collector.used_names | preserved)(module)
 
+
 class UsedNameCollector(ast.NodeVisitor):
     """
     AST를 순회하며 코드에서 사용된 모든 이름을 수집합니다.
     """
+
     def __init__(self):
         self.used_names = set()
 
@@ -44,7 +46,7 @@ class UsedNameCollector(ast.NodeVisitor):
                 self.used_names.add(current.id)
 
         self.generic_visit(node)
-        
+
     def visit_Assign(self, node):
         """
         __all__ 리스트에 포함된 이름들을 수집합니다.
@@ -52,27 +54,29 @@ class UsedNameCollector(ast.NodeVisitor):
         # targets가 __all__ 인지 확인
         is_all = False
         for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == '__all__':
+            if isinstance(target, ast.Name) and target.id == "__all__":
                 is_all = True
                 break
-        
+
         if is_all:
             # value가 리스트인지 확인
             if isinstance(node.value, (ast.List, ast.Tuple)):
                 for elt in node.value.elts:
                     if is_constant_node(elt, ast.Str):
                         # 문자열 상수의 값을 사용된 이름으로 추가
-                        if isinstance(elt, ast.Constant): # Python 3.8+
+                        if isinstance(elt, ast.Constant):  # Python 3.8+
                             self.used_names.add(elt.value)
-                        elif hasattr(elt, 's'): # Python < 3.8
+                        elif hasattr(elt, "s"):  # Python < 3.8
                             self.used_names.add(elt.s)
 
         self.generic_visit(node)
+
 
 class UnusedImportRemover(SuiteTransformer):
     """
     수집된 사용된 이름을 기반으로 사용되지 않는 import 문을 제거하거나 수정합니다.
     """
+
     def __init__(self, used_names):
         self.used_names = used_names
         super(UnusedImportRemover, self).__init__()
@@ -85,7 +89,7 @@ class UnusedImportRemover(SuiteTransformer):
 
         # import 되는 각 이름/별칭을 확인합니다.
         for alias in node.names:
-            imported_name = alias.asname if alias.asname else alias.name.split('.')[0]
+            imported_name = alias.asname if alias.asname else alias.name.split(".")[0]
 
             # import된 이름이 코드에서 사용되었는지 확인합니다.
             if imported_name in self.used_names:
@@ -116,7 +120,7 @@ class UnusedImportRemover(SuiteTransformer):
             imported_name = alias.asname if alias.asname else alias.name
 
             # from ... import * 구문은 명시적으로 처리하지 않습니다. (제거하지 않음)
-            if alias.name == '*':
+            if alias.name == "*":
                 new_names.append(alias)
                 continue
 

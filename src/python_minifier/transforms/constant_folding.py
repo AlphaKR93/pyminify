@@ -17,7 +17,6 @@ class FoldConstants(SuiteTransformer):
         super(FoldConstants, self).__init__()
 
     def visit_BinOp(self, node):
-
         node.left = self.visit(node.left)
         node.right = self.visit(node.right)
 
@@ -54,7 +53,7 @@ class FoldConstants(SuiteTransformer):
             new_node = ast.NameConstant(value=original_value)
         elif isinstance(original_value, (int, float, complex)):
             try:
-                if repr(original_value).startswith('-'):
+                if repr(original_value).startswith("-"):
                     # Represent negative numbers as a USub UnaryOp, so that the ast roundtrip is correct
                     new_node = ast.UnaryOp(op=ast.USub(), operand=ast.Num(n=-original_value))
                 else:
@@ -80,7 +79,7 @@ class FoldConstants(SuiteTransformer):
 
         # Check the folded expression parses back to the same AST
         try:
-            folded_ast = ast.parse(folded_expression, 'folded expression', mode='eval')
+            folded_ast = ast.parse(folded_expression, "folded expression", mode="eval")
             compare_ast(new_node, folded_ast.body)
         except Exception:
             # This can happen if the printed value doesn't parse back to the same AST

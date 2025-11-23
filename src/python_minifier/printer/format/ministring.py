@@ -1,4 +1,4 @@
-BACKSLASH = '\\'
+BACKSLASH = "\\"
 
 
 class MiniString(object):
@@ -22,8 +22,8 @@ class MiniString(object):
 
         """
 
-        if self._s == '':
-            return ''
+        if self._s == "":
+            return ""
 
         if len(self.quote) == 1:
             s = self.to_short()
@@ -47,18 +47,18 @@ class MiniString(object):
         return s
 
     def to_short(self):
-        s = ''
+        s = ""
 
         escaped = {
-            '\n': BACKSLASH + 'n',
-            '\\': BACKSLASH + BACKSLASH,
-            '\a': BACKSLASH + 'a',
-            '\b': BACKSLASH + 'b',
-            '\f': BACKSLASH + 'f',
-            '\r': BACKSLASH + 'r',
-            '\t': BACKSLASH + 't',
-            '\v': BACKSLASH + 'v',
-            '\0': BACKSLASH + 'x00',
+            "\n": BACKSLASH + "n",
+            "\\": BACKSLASH + BACKSLASH,
+            "\a": BACKSLASH + "a",
+            "\b": BACKSLASH + "b",
+            "\f": BACKSLASH + "f",
+            "\r": BACKSLASH + "r",
+            "\t": BACKSLASH + "t",
+            "\v": BACKSLASH + "v",
+            "\0": BACKSLASH + "x00",
             self.quote: BACKSLASH + self.quote,
         }
 
@@ -71,26 +71,26 @@ class MiniString(object):
                     if unicode_value <= 0x7F:
                         s += c
                     elif unicode_value <= 0xFFFF:
-                        s += BACKSLASH + 'u' + format(unicode_value, '04x')
+                        s += BACKSLASH + "u" + format(unicode_value, "04x")
                     else:
-                        s += BACKSLASH + 'U' + format(unicode_value, '08x')
+                        s += BACKSLASH + "U" + format(unicode_value, "08x")
                 else:
                     s += c
 
         return s
 
     def to_long(self):
-        s = ''
+        s = ""
 
         escaped = {
-            '\\': BACKSLASH + BACKSLASH,
-            '\a': BACKSLASH + 'a',
-            '\b': BACKSLASH + 'b',
-            '\f': BACKSLASH + 'f',
-            '\r': BACKSLASH + 'r',
-            '\t': BACKSLASH + 't',
-            '\v': BACKSLASH + 'v',
-            '\0': BACKSLASH + 'x00',
+            "\\": BACKSLASH + BACKSLASH,
+            "\a": BACKSLASH + "a",
+            "\b": BACKSLASH + "b",
+            "\f": BACKSLASH + "f",
+            "\r": BACKSLASH + "r",
+            "\t": BACKSLASH + "t",
+            "\v": BACKSLASH + "v",
+            "\0": BACKSLASH + "x00",
             self.quote[0]: BACKSLASH + self.quote[0],
         }
 
@@ -103,9 +103,9 @@ class MiniString(object):
                     if unicode_value <= 0x7F:
                         s += c
                     elif unicode_value <= 0xFFFF:
-                        s += BACKSLASH + 'u' + format(unicode_value, '04x')
+                        s += BACKSLASH + "u" + format(unicode_value, "04x")
                     else:
-                        s += BACKSLASH + 'U' + format(unicode_value, '08x')
+                        s += BACKSLASH + "U" + format(unicode_value, "08x")
                 else:
                     s += c
 
@@ -132,26 +132,26 @@ class MiniBytes(object):
 
         """
 
-        if self._b == b'':
-            return ''
+        if self._b == b"":
+            return ""
 
         if len(self.quote) == 1:
             s = self.to_short()
         else:
             s = self.to_long()
 
-        assert eval('b' + self.quote + s + self.quote) == self._b
+        assert eval("b" + self.quote + s + self.quote) == self._b
 
         return s
 
     def to_short(self):
-        b = ''
+        b = ""
 
         for c in self._b:
-            if c == b'\\':
+            if c == b"\\":
                 b += BACKSLASH
-            elif c == b'\n':
-                b += BACKSLASH + 'n'
+            elif c == b"\n":
+                b += BACKSLASH + "n"
             elif c == self.quote:
                 b += BACKSLASH + self.quote
             else:
@@ -163,10 +163,10 @@ class MiniBytes(object):
         return b
 
     def to_long(self):
-        b = ''
+        b = ""
 
         for c in self._b:
-            if c == b'\\':
+            if c == b"\\":
                 b += BACKSLASH
             elif c == self.quote:
                 b += BACKSLASH + self.quote

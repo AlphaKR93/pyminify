@@ -50,7 +50,7 @@ class HoistedBinding(Binding):
             return self._value_node.value
 
     def __repr__(self):
-        return self.__class__.__name__ + '(value=%r)' % self.value
+        return self.__class__.__name__ + "(value=%r)" % self.value
 
     def new_mention_count(self):
         # All mentions must be literals, which would be replaced
@@ -66,7 +66,6 @@ class HoistedBinding(Binding):
         return 2  # '=' + '\n'
 
     def rename(self, new_name):
-
         for node in self.references:
             replace(node, ast.Name(id=new_name, ctx=ast.Load()))
 
@@ -81,7 +80,11 @@ class HoistedBinding(Binding):
 
     def should_rename(self, new_name):
         current_cost = len(self.references) * len(repr(self.value))
-        rename_cost = (self.old_mention_count() * len(repr(self.value))) + ((self.new_mention_count()) * utf8_byte_len(new_name)) + self.additional_byte_cost()
+        rename_cost = (
+            (self.old_mention_count() * len(repr(self.value)))
+            + ((self.new_mention_count()) * utf8_byte_len(new_name))
+            + self.additional_byte_cost()
+        )
 
         return rename_cost <= current_cost
 
@@ -170,7 +173,6 @@ class HoistLiterals(NodeVisitor):
         return path
 
     def common_path(self, n1_path, n2_path):
-
         path = []
         for n1_step, n2_step in zip(n1_path, n2_path):
             if n1_step is not n2_step:
@@ -180,7 +182,6 @@ class HoistLiterals(NodeVisitor):
 
     def place_bindings(self):
         for binding in self._hoisted.values():
-
             namespace_path = []
 
             for node in binding.references:
@@ -202,7 +203,6 @@ class HoistLiterals(NodeVisitor):
         return binding
 
     def visit_Str(self, node):
-
         if isinstance(ast.get_parent(node), ast.Expr):
             # This is literal statement
             # The RemoveLiteralStatements transformer must have left it here, so ignore it.
@@ -247,7 +247,7 @@ class HoistLiterals(NodeVisitor):
             return self.generic_visit(node)
 
         for target in node.targets:
-            if isinstance(target, ast.Name) and target.id == '__slots__':
+            if isinstance(target, ast.Name) and target.id == "__slots__":
                 # This is a __slots__ assignment, don't hoist the literals
                 return None
 

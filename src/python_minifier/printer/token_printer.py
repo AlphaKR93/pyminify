@@ -17,7 +17,7 @@ class TokenTypes(object):
 
 
 class Delimiter(object):
-    def __init__(self, terminal_printer, delimiter=',', add_parens=False):
+    def __init__(self, terminal_printer, delimiter=",", add_parens=False):
         """
         Delimited group printer
 
@@ -64,14 +64,14 @@ class Delimiter(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Close the delimited group."""
         if not self._first and self._add_parens:
-            self._terminal_printer.delimiter(')')
+            self._terminal_printer.delimiter(")")
 
     def new_item(self):
         """Add a new item to the delimited group."""
         if self._first:
             self._first = False
             if self._context_manager and self._add_parens:
-                self._terminal_printer.delimiter('(')
+                self._terminal_printer.delimiter("(")
         else:
             self._terminal_printer.delimiter(self._delimiter)
 
@@ -90,7 +90,7 @@ class TokenPrinter(object):
         self._prefer_single_line = prefer_single_line
         self._allow_invalid_num_warnings = allow_invalid_num_warnings
 
-        self._code = ''
+        self._code = ""
         self.indent = 0
         self.unicode_literals = False
         self.previous_token = TokenTypes.NoToken
@@ -107,8 +107,13 @@ class TokenPrinter(object):
         """Add an identifier to the output code."""
         assert isinstance(name, str)
 
-        if self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword, TokenTypes.NumberLiteral]:
-            self.delimiter(' ')
+        if self.previous_token in [
+            TokenTypes.Identifier,
+            TokenTypes.Keyword,
+            TokenTypes.SoftKeyword,
+            TokenTypes.NumberLiteral,
+        ]:
+            self.delimiter(" ")
 
         self._code += name
         self.previous_token = TokenTypes.Identifier
@@ -116,24 +121,60 @@ class TokenPrinter(object):
     def keyword(self, kw):
         """Add a keyword to the output code."""
         assert kw in [
-            'False', 'None', 'True', 'and', 'as',
-            'assert', 'async', 'await', 'break',
-            'class', 'continue', 'def', 'del',
-            'elif', 'else', 'except', 'finally',
-            'for', 'from', 'global', 'if', 'import',
-            'in', 'is', 'lambda', 'nonlocal', 'not',
-            'or', 'pass', 'raise', 'return',
-            'try', 'while', 'with', 'yield', '_',
-            'case', 'match', 'print', 'exec',
-            'type'
+            "False",
+            "None",
+            "True",
+            "and",
+            "as",
+            "assert",
+            "async",
+            "await",
+            "break",
+            "class",
+            "continue",
+            "def",
+            "del",
+            "elif",
+            "else",
+            "except",
+            "finally",
+            "for",
+            "from",
+            "global",
+            "if",
+            "import",
+            "in",
+            "is",
+            "lambda",
+            "nonlocal",
+            "not",
+            "or",
+            "pass",
+            "raise",
+            "return",
+            "try",
+            "while",
+            "with",
+            "yield",
+            "_",
+            "case",
+            "match",
+            "print",
+            "exec",
+            "type",
         ]
 
-        if self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword, TokenTypes.NumberLiteral]:
-            self.delimiter(' ')
+        if self.previous_token in [
+            TokenTypes.Identifier,
+            TokenTypes.Keyword,
+            TokenTypes.SoftKeyword,
+            TokenTypes.NumberLiteral,
+        ]:
+            self.delimiter(" ")
 
         self._code += kw
 
-        if kw in ['_', 'case', 'match', 'type']:
+        if kw in ["_", "case", "match", "type"]:
             self.previous_token = TokenTypes.SoftKeyword
         else:
             self.previous_token = TokenTypes.Keyword
@@ -142,8 +183,12 @@ class TokenPrinter(object):
         """Add a string literal to the output code."""
         s = repr(value)
 
-        if len(s) > 0 and s[0].isalpha() and self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.delimiter(' ')
+        if (
+            len(s) > 0
+            and s[0].isalpha()
+            and self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]
+        ):
+            self.delimiter(" ")
 
         self._code += s
         self.previous_token = TokenTypes.NonNumberLiteral
@@ -152,8 +197,12 @@ class TokenPrinter(object):
         """Add a bytes literal to the output code."""
         s = repr(value)
 
-        if len(s) > 0 and s[0].isalpha() and self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.delimiter(' ')
+        if (
+            len(s) > 0
+            and s[0].isalpha()
+            and self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]
+        ):
+            self.delimiter(" ")
 
         self._code += s
         self.previous_token = TokenTypes.NonNumberLiteral
@@ -163,7 +212,7 @@ class TokenPrinter(object):
         assert isinstance(s, str)
 
         if self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.delimiter(' ')
+            self.delimiter(" ")
 
         self._code += s
         self.previous_token = TokenTypes.NonNumberLiteral
@@ -173,7 +222,7 @@ class TokenPrinter(object):
         assert isinstance(s, str)
 
         if self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
-            self.delimiter(' ')
+            self.delimiter(" ")
 
         self._code += s
         self.previous_token = TokenTypes.NonNumberLiteral
@@ -181,11 +230,35 @@ class TokenPrinter(object):
     def delimiter(self, d):
         """Add a delimiter to the output code."""
         assert d in [
-            '(', ')', '[', ']', '{', '}', ' ',
-            ',', ':', '.', ';', '@', '=', '->',
-            '+=', '-=', '*=', '/=', '//=', '%=', '@=',
-            '&=', '|=', '^=', '>>=', '<<=', '**=', '|',
-            '`'
+            "(",
+            ")",
+            "[",
+            "]",
+            "{",
+            "}",
+            " ",
+            ",",
+            ":",
+            ".",
+            ";",
+            "@",
+            "=",
+            "->",
+            "+=",
+            "-=",
+            "*=",
+            "/=",
+            "//=",
+            "%=",
+            "@=",
+            "&=",
+            "|=",
+            "^=",
+            ">>=",
+            "<<=",
+            "**=",
+            "|",
+            "`",
         ]
 
         self._code += d
@@ -194,9 +267,27 @@ class TokenPrinter(object):
     def operator(self, o):
         """Add an operator to the output code."""
         assert o in [
-            '+', '-', '*', '**', '/', '//', '%', '@',
-            '<<', '>>', '&', '|', '^', '~', ':=',
-            '<', '>', '<=', '>=', '==', '!='
+            "+",
+            "-",
+            "*",
+            "**",
+            "/",
+            "//",
+            "%",
+            "@",
+            "<<",
+            ">>",
+            "&",
+            "|",
+            "^",
+            "~",
+            ":=",
+            "<",
+            ">",
+            "<=",
+            ">=",
+            "==",
+            "!=",
         ]
 
         self._code += o
@@ -209,9 +300,9 @@ class TokenPrinter(object):
         h = hex(v)
 
         if self.previous_token == TokenTypes.SoftKeyword:
-            self.delimiter(' ')
+            self.delimiter(" ")
         elif self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword]:
-            self.delimiter(' ')
+            self.delimiter(" ")
 
         self._code += h if len(h) < len(s) else s
 
@@ -223,15 +314,15 @@ class TokenPrinter(object):
 
         s = repr(value)
 
-        if s in ['infj', 'inf*j']:
-            s = '1e999j'
-        elif s in ['-infj', '-inf*j']:
-            s = '-1e999j'
+        if s in ["infj", "inf*j"]:
+            s = "1e999j"
+        elif s in ["-infj", "-inf*j"]:
+            s = "-1e999j"
 
         if self.previous_token == TokenTypes.SoftKeyword:
-            self.delimiter(' ')
+            self.delimiter(" ")
         elif self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword]:
-            self.delimiter(' ')
+            self.delimiter(" ")
 
         self._code += s
 
@@ -243,40 +334,40 @@ class TokenPrinter(object):
 
         s = repr(v)
 
-        s = s.replace('e+', 'e')
+        s = s.replace("e+", "e")
 
-        add_e = re.match(r'^(\d+?)(0+).0$', s)
+        add_e = re.match(r"^(\d+?)(0+).0$", s)
         if add_e:
-            s = add_e.group(1) + 'e' + str(len(add_e.group(2)))
+            s = add_e.group(1) + "e" + str(len(add_e.group(2)))
 
-        if s == 'inf':
-            s = '1e999'
-        elif s == '-inf':
-            s = '-1e999'
-        elif s.startswith('0.'):
+        if s == "inf":
+            s = "1e999"
+        elif s == "-inf":
+            s = "-1e999"
+        elif s.startswith("0."):
             s = s[1:]
-        elif s.startswith('-0.'):
-            s = '-' + s[2:]
-        elif s.endswith('.0'):
+        elif s.startswith("-0."):
+            s = "-" + s[2:]
+        elif s.endswith(".0"):
             s = s[:-1]
 
         if self.previous_token == TokenTypes.SoftKeyword:
-            self.delimiter(' ')
+            self.delimiter(" ")
         elif self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword]:
-            self.delimiter(' ')
+            self.delimiter(" ")
 
         self._code += s
 
         self.previous_token = TokenTypes.NumberLiteral
 
     def newline(self):
-        """ Add a newline to the code. """
-        if self._code == '':
+        """Add a newline to the code."""
+        if self._code == "":
             return
 
-        self._code = self._code.rstrip('\n\t;')
-        self._code += '\n'
-        self._code += '\t' * self.indent
+        self._code = self._code.rstrip("\n\t;")
+        self._code += "\n"
+        self._code += "\t" * self.indent
 
         self.previous_token = TokenTypes.NewLine
 
@@ -291,17 +382,17 @@ class TokenPrinter(object):
         self.newline()
 
     def end_statement(self):
-        """ End a statement with a newline, or a semi-colon if it saves characters. """
+        """End a statement with a newline, or a semi-colon if it saves characters."""
 
         if self.indent == 0:
             self.newline()
         else:
-            if self._code[-1] != ';':
-                self._code += ';'
+            if self._code[-1] != ";":
+                self._code += ";"
 
         self.previous_token = TokenTypes.EndStatement
 
     def append(self, code, token_type):
-        """ Append arbitrary string to the output."""
+        """Append arbitrary string to the output."""
         self._code += code
         self.previous_token = token_type

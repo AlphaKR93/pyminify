@@ -8,12 +8,12 @@ from .util import builtins
 
 def random_generator(length=40):
     valid_first = string.ascii_uppercase + string.ascii_lowercase
-    valid_rest = string.digits + valid_first + '_'
+    valid_rest = string.digits + valid_first + "_"
 
     while True:
         first = [random.choice(valid_first)]
         rest = [random.choice(valid_rest) for i in range(length - 1)]
-        yield ''.join(first + rest)
+        yield "".join(first + rest)
 
 
 def get_valid_2byte_chars():
@@ -33,7 +33,7 @@ def get_valid_2byte_chars():
 
 def name_generator(allow_unicode=False):
     valid_first = string.ascii_uppercase + string.ascii_lowercase
-    valid_rest = string.digits + valid_first + '_'
+    valid_rest = string.digits + valid_first + "_"
 
     unicode_chars = []
     if allow_unicode:
@@ -50,14 +50,14 @@ def name_generator(allow_unicode=False):
     # Prepare for combinations
     if allow_unicode:
         # We append unicode chars to valid sets so itertools.product uses them
-        valid_first += ''.join(unicode_chars)
-        valid_rest += ''.join(unicode_chars)
+        valid_first += "".join(unicode_chars)
+        valid_rest += "".join(unicode_chars)
 
     for length in itertools.count(1):
         for first in valid_first:
             for rest in itertools.product(valid_rest, repeat=length):
                 name = first
-                name += ''.join(rest)
+                name += "".join(rest)
                 yield name
 
 

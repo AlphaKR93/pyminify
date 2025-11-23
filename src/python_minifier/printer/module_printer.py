@@ -9,7 +9,7 @@ class ModulePrinter(ExpressionPrinter):
     Builds the smallest possible exact representation of an ast
     """
 
-    def __init__(self, indent_char='\t'):
+    def __init__(self, indent_char="\t"):
         super(ModulePrinter, self).__init__()
         self.indent_char = indent_char
 
@@ -26,26 +26,26 @@ class ModulePrinter(ExpressionPrinter):
         assert isinstance(module, ast.Module)
 
         self.visit_Module(module)
-        return str(self.printer).rstrip('\n' + self.indent_char + ';')
+        return str(self.printer).rstrip("\n" + self.indent_char + ";")
 
     @property
     def code(self):
-        return str(self.printer).rstrip('\n' + self.indent_char + ';')
+        return str(self.printer).rstrip("\n" + self.indent_char + ";")
 
     # region Simple Statements
 
     def visit_Exec(self, node):
         assert isinstance(node, ast.Exec)
 
-        self.printer.keyword('exec')
+        self.printer.keyword("exec")
         self._expression(node.body)
 
         if node.globals:
-            self.printer.keyword('in')
+            self.printer.keyword("in")
             self._expression(node.globals)
 
         if node.locals:
-            self.printer.delimiter(',')
+            self.printer.delimiter(",")
             self._expression(node.locals)
 
         self.printer.end_statement()
@@ -63,11 +63,11 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Assert(self, node):
         assert isinstance(node, ast.Assert)
 
-        self.printer.keyword('assert')
+        self.printer.keyword("assert")
         self._expression(node.test)
 
         if node.msg:
-            self.printer.delimiter(',')
+            self.printer.delimiter(",")
             self._expression(node.msg)
 
         self.printer.end_statement()
@@ -77,7 +77,7 @@ class ModulePrinter(ExpressionPrinter):
 
         for target_node in node.targets:
             self._testlist(target_node)
-            self.printer.delimiter('=')
+            self.printer.delimiter("=")
 
         # Yield nodes that are the sole node on the right hand side of an assignment do not need parens
         if isinstance(node.value, (ast.Yield, ast.YieldFrom)):
@@ -92,7 +92,7 @@ class ModulePrinter(ExpressionPrinter):
 
         self._testlist(node.target)
         self.visit(node.op)
-        self.printer.delimiter('=')
+        self.printer.delimiter("=")
 
         # Yield nodes that are the sole node on the right hand side of an assignment do not need parens
         if isinstance(node.value, (ast.Yield, ast.YieldFrom)):
@@ -108,16 +108,16 @@ class ModulePrinter(ExpressionPrinter):
         if node.simple:
             self.visit(node.target)
         else:
-            self.printer.delimiter('(')
+            self.printer.delimiter("(")
             self._expression(node.target)
-            self.printer.delimiter(')')
+            self.printer.delimiter(")")
 
         if node.annotation:
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
             self._expression(node.annotation)
 
         if node.value:
-            self.printer.delimiter('=')
+            self.printer.delimiter("=")
 
             self._expression(node.value)
 
@@ -126,20 +126,20 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Pass(self, node):
         assert isinstance(node, ast.Pass)
 
-        self.printer.keyword('pass')
+        self.printer.keyword("pass")
         self.printer.end_statement()
 
     def visit_Delete(self, node):
         assert isinstance(node, ast.Delete)
 
-        self.printer.keyword('del')
+        self.printer.keyword("del")
         self._exprlist(node.targets)
         self.printer.end_statement()
 
     def visit_Return(self, node):
         assert isinstance(node, ast.Return)
 
-        self.printer.keyword('return')
+        self.printer.keyword("return")
         if isinstance(node.value, ast.Tuple):
             self._testlist(node.value)
         elif node.value is not None:
@@ -149,13 +149,13 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Print(self, node):
         assert isinstance(node, ast.Print)
 
-        self.printer.keyword('print')
+        self.printer.keyword("print")
 
         delimiter = Delimiter(self.printer)
 
         if node.dest:
             delimiter.new_item()
-            self.printer.operator('>>')
+            self.printer.operator(">>")
             self._expression(node.dest)
 
         for v in node.values:
@@ -163,7 +163,7 @@ class ModulePrinter(ExpressionPrinter):
             self._expression(v)
 
         if not node.nl:
-            self.printer.delimiter(',')
+            self.printer.delimiter(",")
 
         self.printer.end_statement()
 
@@ -182,18 +182,18 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Raise(self, node):
         assert isinstance(node, ast.Raise)
 
-        self.printer.keyword('raise')
+        self.printer.keyword("raise")
 
-        if hasattr(node, 'type'):
+        if hasattr(node, "type"):
             # Python2 raise node
 
             if node.type:
                 self._expression(node.type)
             if node.inst:
-                self.printer.delimiter(',')
+                self.printer.delimiter(",")
                 self._expression(node.inst)
             if node.tback:
-                self.printer.delimiter(',')
+                self.printer.delimiter(",")
                 self._expression(node.tback)
 
         else:
@@ -203,7 +203,7 @@ class ModulePrinter(ExpressionPrinter):
                 self._expression(node.exc)
 
             if node.cause:
-                self.printer.keyword('from')
+                self.printer.keyword("from")
                 self._expression(node.cause)
 
         self.printer.end_statement()
@@ -211,19 +211,19 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Break(self, node):
         assert isinstance(node, ast.Break)
 
-        self.printer.keyword('break')
+        self.printer.keyword("break")
         self.printer.end_statement()
 
     def visit_Continue(self, node):
         assert isinstance(node, ast.Continue)
 
-        self.printer.keyword('continue')
+        self.printer.keyword("continue")
         self.printer.end_statement()
 
     def visit_Import(self, node):
         assert isinstance(node, ast.Import)
 
-        self.printer.keyword('import')
+        self.printer.keyword("import")
 
         delimiter = Delimiter(self.printer)
         for n in node.names:
@@ -235,23 +235,23 @@ class ModulePrinter(ExpressionPrinter):
     def visit_ImportFrom(self, node):
         assert isinstance(node, ast.ImportFrom)
 
-        self.printer.keyword('from')
+        self.printer.keyword("from")
         for _i in range(node.level):
-            self.printer.delimiter('.')
+            self.printer.delimiter(".")
         if node.module is not None:
             self.printer.identifier(node.module)
 
-        self.printer.keyword('import')
+        self.printer.keyword("import")
 
         delimiter = Delimiter(self.printer)
         for n in node.names:
             delimiter.new_item()
 
-            if node.module == '__future__' and n.name == 'unicode_literals':
+            if node.module == "__future__" and n.name == "unicode_literals":
                 self.printer.unicode_literals = True
 
-            if n.name == '*':
-                self.printer.operator('*')
+            if n.name == "*":
+                self.printer.operator("*")
             else:
                 self.visit_alias(n)
 
@@ -263,13 +263,13 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.identifier(node.name)
 
         if node.asname:
-            self.printer.keyword('as')
+            self.printer.keyword("as")
             self.printer.identifier(node.asname)
 
     def visit_Global(self, node):
         assert isinstance(node, ast.Global)
 
-        self.printer.keyword('global')
+        self.printer.keyword("global")
         delimiter = Delimiter(self.printer)
         for n in node.names:
             delimiter.new_item()
@@ -280,7 +280,7 @@ class ModulePrinter(ExpressionPrinter):
     def visit_Nonlocal(self, node):
         assert isinstance(node, ast.Nonlocal)
 
-        self.printer.keyword('nonlocal')
+        self.printer.keyword("nonlocal")
         delimiter = Delimiter(self.printer)
         for n in node.names:
             delimiter.new_item()
@@ -298,12 +298,12 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.newline()
 
         if el:
-            self.printer.keyword('elif')
+            self.printer.keyword("elif")
         else:
-            self.printer.keyword('if')
+            self.printer.keyword("if")
 
         self._expression(node.test)
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
 
         self._suite(node.body)
 
@@ -314,8 +314,8 @@ class ModulePrinter(ExpressionPrinter):
                 self.printer.newline()
             else:
                 # an else block
-                self.printer.keyword('else')
-                self.printer.delimiter(':')
+                self.printer.keyword("else")
+                self.printer.delimiter(":")
                 self._suite(node.orelse)
 
     def visit_For(self, node, is_async=False):
@@ -324,54 +324,54 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.newline()
 
         if is_async:
-            self.printer.keyword('async')
+            self.printer.keyword("async")
 
-        self.printer.keyword('for')
+        self.printer.keyword("for")
         self._exprlist([node.target])
-        self.printer.keyword('in')
+        self.printer.keyword("in")
         self._expression(node.iter)
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
 
         self._suite(node.body)
 
         if node.orelse:
             self.printer.newline()
-            self.printer.keyword('else')
-            self.printer.delimiter(':')
+            self.printer.keyword("else")
+            self.printer.delimiter(":")
             self._suite(node.orelse)
 
     def visit_While(self, node):
         assert isinstance(node, ast.While)
 
         self.printer.newline()
-        self.printer.keyword('while')
+        self.printer.keyword("while")
         self._expression(node.test)
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
         self._suite(node.body)
 
         if node.orelse:
-            self.printer.keyword('else')
-            self.printer.delimiter(':')
+            self.printer.keyword("else")
+            self.printer.delimiter(":")
             self._suite(node.orelse)
 
     def visit_Try(self, node, star=False):
         assert isinstance(node, (ast.Try, ast.TryStar))
 
         self.printer.newline()
-        self.printer.keyword('try')
-        self.printer.delimiter(':')
+        self.printer.keyword("try")
+        self.printer.delimiter(":")
         self._suite(node.body)
 
         [self.visit_ExceptHandler(n, star) for n in node.handlers]
 
         if node.orelse:
-            self.printer.keyword('else')
-            self.printer.delimiter(':')
+            self.printer.keyword("else")
+            self.printer.delimiter(":")
             self._suite(node.orelse)
 
         if node.finalbody:
-            self.printer.keyword('finally')
-            self.printer.delimiter(':')
+            self.printer.keyword("finally")
+            self.printer.delimiter(":")
             self._suite(node.finalbody)
 
     def visit_TryStar(self, node):
@@ -385,50 +385,50 @@ class ModulePrinter(ExpressionPrinter):
             self.visit_TryExcept(node.body[0])
         else:
             self.printer.newline()
-            self.printer.keyword('try')
-            self.printer.delimiter(':')
+            self.printer.keyword("try")
+            self.printer.delimiter(":")
             self._suite(node.body)
 
         if node.finalbody:
-            self.printer.keyword('finally')
-            self.printer.delimiter(':')
+            self.printer.keyword("finally")
+            self.printer.delimiter(":")
             self._suite(node.finalbody)
 
     def visit_TryExcept(self, node):
         assert isinstance(node, ast.TryExcept)
 
         self.printer.newline()
-        self.printer.keyword('try')
-        self.printer.delimiter(':')
+        self.printer.keyword("try")
+        self.printer.delimiter(":")
         self._suite(node.body)
 
         [self.visit_ExceptHandler(n) for n in node.handlers]
 
         if node.orelse:
-            self.printer.keyword('else')
-            self.printer.delimiter(':')
+            self.printer.keyword("else")
+            self.printer.delimiter(":")
             self._suite(node.orelse)
 
     def visit_ExceptHandler(self, node, star=False):
         assert isinstance(node, ast.ExceptHandler)
 
-        self.printer.keyword('except')
+        self.printer.keyword("except")
 
         if star:
-            self.printer.operator('*')
+            self.printer.operator("*")
 
         if node.type is not None:
             self._expression(node.type)
 
         if node.name is not None:
-            self.printer.keyword('as')
+            self.printer.keyword("as")
 
             if isinstance(node.name, str):
                 self.printer.identifier(node.name)
             else:
                 self._expression(node.name)
 
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
 
         self._suite(node.body)
 
@@ -438,27 +438,27 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.newline()
 
         if is_async:
-            self.printer.keyword('async')
+            self.printer.keyword("async")
 
-        self.printer.keyword('with')
+        self.printer.keyword("with")
 
         delimiter = Delimiter(self.printer)
-        if hasattr(node, 'items'):
+        if hasattr(node, "items"):
             for item in node.items:
                 delimiter.new_item()
 
                 if self.precedence(item.context_expr) != 0 and self.precedence(item.context_expr) <= self.precedence(
                     node
                 ):
-                    self.printer.delimiter('(')
+                    self.printer.delimiter("(")
                     self.visit_withitem(item)
-                    self.printer.delimiter(')')
+                    self.printer.delimiter(")")
                 else:
                     self.visit_withitem(item)
         else:
             self.visit_withitem(node)
 
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
         self._suite(node.body)
 
     def visit_withitem(self, node):
@@ -467,7 +467,7 @@ class ModulePrinter(ExpressionPrinter):
         self._expression(node.context_expr)
 
         if node.optional_vars is not None:
-            self.printer.keyword('as')
+            self.printer.keyword("as")
             self._expression(node.optional_vars)
 
     def visit_FunctionDef(self, node, is_async=False):
@@ -476,36 +476,36 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.newline()
 
         for d in node.decorator_list:
-            self.printer.operator('@')
+            self.printer.operator("@")
             self._expression(d)
             self.printer.newline()
 
         if is_async:
-            self.printer.keyword('async')
+            self.printer.keyword("async")
 
-        self.printer.keyword('def')
+        self.printer.keyword("def")
         self.printer.identifier(node.name)
 
-        if hasattr(node, 'type_params') and node.type_params:
-            self.printer.delimiter('[')
+        if hasattr(node, "type_params") and node.type_params:
+            self.printer.delimiter("[")
             delimiter = Delimiter(self.printer)
             for type_param in node.type_params:
                 delimiter.new_item()
                 self.visit(type_param)
-            self.printer.delimiter(']')
+            self.printer.delimiter("]")
 
-        self.printer.delimiter('(')
+        self.printer.delimiter("(")
         self.visit_arguments(node.args)
-        self.printer.delimiter(')')
+        self.printer.delimiter(")")
 
-        if hasattr(node, 'returns') and node.returns is not None:
-            self.printer.delimiter('->')
+        if hasattr(node, "returns") and node.returns is not None:
+            self.printer.delimiter("->")
             self._expression(node.returns)
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
         else:
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
 
-        if hasattr(node, 'docstring') and node.docstring is not None:
+        if hasattr(node, "docstring") and node.docstring is not None:
             self._suite([ast.Expr(value=ast.Str(s=node.docstring))] + node.body)
         else:
             self._suite(node.body)
@@ -516,45 +516,44 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.newline()
 
         for d in node.decorator_list:
-            self.printer.operator('@')
+            self.printer.operator("@")
             self._expression(d)
             self.printer.newline()
 
-        self.printer.keyword('class')
+        self.printer.keyword("class")
         self.printer.identifier(node.name)
 
-        if hasattr(node, 'type_params') and node.type_params:
-            self.printer.delimiter('[')
+        if hasattr(node, "type_params") and node.type_params:
+            self.printer.delimiter("[")
             delimiter = Delimiter(self.printer)
             for type_param in node.type_params:
                 delimiter.new_item()
                 self.visit(type_param)
-            self.printer.delimiter(']')
+            self.printer.delimiter("]")
 
         with Delimiter(self.printer, add_parens=True) as delimiter:
-
             for b in node.bases:
                 delimiter.new_item()
                 self._expression(b)
 
-            if hasattr(node, 'starargs') and node.starargs is not None:
+            if hasattr(node, "starargs") and node.starargs is not None:
                 delimiter.new_item()
-                self.printer.operator('*')
+                self.printer.operator("*")
                 self._expression(node.starargs)
 
-            if hasattr(node, 'keywords'):
+            if hasattr(node, "keywords"):
                 for kw in node.keywords:
                     delimiter.new_item()
                     self.visit_keyword(kw)
 
-            if hasattr(node, 'kwargs') and node.kwargs is not None:
+            if hasattr(node, "kwargs") and node.kwargs is not None:
                 delimiter.new_item()
-                self.printer.operator('**')
+                self.printer.operator("**")
                 self.visit(node.kwargs)
 
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
 
-        if hasattr(node, 'docstring') and node.docstring is not None:
+        if hasattr(node, "docstring") and node.docstring is not None:
             self._suite([ast.Expr(value=ast.Str(s=node.docstring))] + node.body)
         else:
             self._suite(node.body)
@@ -564,7 +563,19 @@ class ModulePrinter(ExpressionPrinter):
     # region Pattern Matching
 
     def pattern(self, pattern_node):
-        assert isinstance(pattern_node, (ast.MatchValue, ast.MatchAs, ast.MatchStar, ast.MatchOr, ast.MatchSingleton, ast.MatchClass, ast.MatchSequence, ast.MatchMapping))
+        assert isinstance(
+            pattern_node,
+            (
+                ast.MatchValue,
+                ast.MatchAs,
+                ast.MatchStar,
+                ast.MatchOr,
+                ast.MatchSingleton,
+                ast.MatchClass,
+                ast.MatchSequence,
+                ast.MatchMapping,
+            ),
+        )
         self.visit(pattern_node)
 
     def visit_Match(self, node):
@@ -572,17 +583,17 @@ class ModulePrinter(ExpressionPrinter):
 
         self.printer.newline()
 
-        self.printer.keyword('match')
+        self.printer.keyword("match")
 
         self._expression(node.subject)
 
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
 
         self._suite(node.cases)
 
     def visit_match_case(self, node):
         assert isinstance(node, ast.match_case)
-        self.printer.keyword('case')
+        self.printer.keyword("case")
 
         if isinstance(node.pattern, ast.MatchSequence):
             self.visit_MatchSequence(node.pattern, omit_brackets=True)
@@ -590,10 +601,10 @@ class ModulePrinter(ExpressionPrinter):
             self.pattern(node.pattern)
 
         if node.guard is not None:
-            self.printer.keyword('if')
+            self.printer.keyword("if")
             self.visit(node.guard)
 
-        self.printer.delimiter(':')
+        self.printer.delimiter(":")
         self._suite(node.body)
 
     def visit_MatchValue(self, node):
@@ -608,10 +619,10 @@ class ModulePrinter(ExpressionPrinter):
     def visit_MatchStar(self, node):
         assert isinstance(node, ast.MatchStar)
 
-        self.printer.operator('*')
+        self.printer.operator("*")
 
         if node.name is None:
-            self.printer.identifier('_')
+            self.printer.identifier("_")
         else:
             self.printer.identifier(node.name)
 
@@ -619,7 +630,7 @@ class ModulePrinter(ExpressionPrinter):
         assert isinstance(node, ast.MatchSequence)
 
         if len(node.patterns) < 2 or not omit_brackets:
-            self.printer.delimiter('[')
+            self.printer.delimiter("[")
 
         delimiter = Delimiter(self.printer)
         for pattern in node.patterns:
@@ -627,33 +638,33 @@ class ModulePrinter(ExpressionPrinter):
             self.pattern(pattern)
 
         if len(node.patterns) < 2 or not omit_brackets:
-            self.printer.delimiter(']')
+            self.printer.delimiter("]")
 
     def visit_MatchMapping(self, node):
-        self.printer.delimiter('{')
+        self.printer.delimiter("{")
 
         delimiter = Delimiter(self.printer)
         for k, p in zip(node.keys, node.patterns):
             delimiter.new_item()
 
             self._expression(k)
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
 
             self.pattern(p)
 
         if node.rest is not None:
             delimiter.new_item()
 
-            self.printer.operator('**')
+            self.printer.operator("**")
             self.printer.identifier(node.rest)
 
-        self.printer.delimiter('}')
+        self.printer.delimiter("}")
 
     def visit_MatchClass(self, node):
         assert isinstance(node, ast.MatchClass)
 
         self.visit(node.cls)
-        self.printer.delimiter('(')
+        self.printer.delimiter("(")
 
         delimiter = Delimiter(self.printer)
         for pattern in node.patterns:
@@ -664,41 +675,41 @@ class ModulePrinter(ExpressionPrinter):
             delimiter.new_item()
 
             self.printer.identifier(kwd)
-            self.printer.delimiter('=')
+            self.printer.delimiter("=")
 
             self.pattern(pattern)
 
-        self.printer.delimiter(')')
+        self.printer.delimiter(")")
 
     def visit_MatchAs(self, node):
         assert isinstance(node, ast.MatchAs)
 
         if node.pattern is not None:
             if isinstance(node.pattern, ast.MatchAs):
-                self.printer.delimiter('(')
+                self.printer.delimiter("(")
                 self.pattern(node.pattern)
-                self.printer.delimiter(')')
+                self.printer.delimiter(")")
             else:
                 self.pattern(node.pattern)
 
-            self.printer.keyword('as')
+            self.printer.keyword("as")
 
         if node.name is None:
-            self.printer.identifier('_')
+            self.printer.identifier("_")
         else:
             self.printer.identifier(node.name)
 
     def visit_MatchOr(self, node):
         assert isinstance(node, ast.MatchOr)
 
-        delimiter = Delimiter(self.printer, delimiter='|')
+        delimiter = Delimiter(self.printer, delimiter="|")
         for pattern in node.patterns:
             delimiter.new_item()
 
             if isinstance(pattern, (ast.MatchAs, ast.MatchOr)):
-                self.printer.delimiter('(')
+                self.printer.delimiter("(")
                 self.pattern(pattern)
-                self.printer.delimiter(')')
+                self.printer.delimiter(")")
             else:
                 self.pattern(pattern)
 
@@ -723,18 +734,18 @@ class ModulePrinter(ExpressionPrinter):
     # region Generic Types
     def visit_TypeAlias(self, node):
         assert isinstance(node, ast.TypeAlias)
-        self.printer.keyword('type')
+        self.printer.keyword("type")
         self.visit_Name(node.name)
 
-        if hasattr(node, 'type_params') and node.type_params:
-            self.printer.delimiter('[')
+        if hasattr(node, "type_params") and node.type_params:
+            self.printer.delimiter("[")
             delimiter = Delimiter(self.printer)
             for param in node.type_params:
                 delimiter.new_item()
                 self.visit(param)
-            self.printer.delimiter(']')
+            self.printer.delimiter("]")
 
-        self.printer.delimiter('=')
+        self.printer.delimiter("=")
         self._expression(node.value)
         self.printer.end_statement()
 
@@ -744,36 +755,36 @@ class ModulePrinter(ExpressionPrinter):
         self.printer.identifier(node.name)
 
         if node.bound:
-            self.printer.delimiter(':')
+            self.printer.delimiter(":")
             self._expression(node.bound)
 
-        if hasattr(node, 'default_value') and node.default_value is not None:
-            self.printer.delimiter('=')
+        if hasattr(node, "default_value") and node.default_value is not None:
+            self.printer.delimiter("=")
             self._expression(node.default_value)
 
     def visit_TypeVarTuple(self, node):
         assert isinstance(node, ast.TypeVarTuple)
-        self.printer.operator('*')
+        self.printer.operator("*")
         self.printer.identifier(node.name)
 
-        if hasattr(node, 'default_value') and node.default_value is not None:
-            self.printer.delimiter('=')
+        if hasattr(node, "default_value") and node.default_value is not None:
+            self.printer.delimiter("=")
             self._expression(node.default_value)
 
     def visit_ParamSpec(self, node):
         assert isinstance(node, ast.ParamSpec)
-        self.printer.operator('*')
-        self.printer.operator('*')
+        self.printer.operator("*")
+        self.printer.operator("*")
         self.printer.identifier(node.name)
 
-        if hasattr(node, 'default_value') and node.default_value is not None:
-            self.printer.delimiter('=')
+        if hasattr(node, "default_value") and node.default_value is not None:
+            self.printer.delimiter("=")
             self._expression(node.default_value)
 
     # endregion
 
     def visit_Module(self, node):
-        if hasattr(node, 'docstring') and node.docstring is not None:
+        if hasattr(node, "docstring") and node.docstring is not None:
             # Python 3.6 added a docstring field! Really useful for every use case except this one...
             # Put the docstring back into the body
             self._suite_body([ast.Expr(value=ast.Str(s=node.docstring))] + node.body)
@@ -781,23 +792,22 @@ class ModulePrinter(ExpressionPrinter):
             self._suite_body(node.body)
 
     def _suite(self, node_list):
-
         compound_statements = [
-            'For',
-            'While',
-            'Try',
-            'TryStar',
-            'If',
-            'With',
-            'ClassDef',
-            'TryFinally',
-            'TryExcept',
-            'FunctionDef',
-            'AsyncFunctionDef',
-            'AsyncFor',
-            'AsyncWith',
-            'Match',
-            'match_case'
+            "For",
+            "While",
+            "Try",
+            "TryStar",
+            "If",
+            "With",
+            "ClassDef",
+            "TryFinally",
+            "TryExcept",
+            "FunctionDef",
+            "AsyncFunctionDef",
+            "AsyncFor",
+            "AsyncWith",
+            "Match",
+            "match_case",
         ]
 
         if [node for node in node_list if node.__class__.__name__ in compound_statements]:
@@ -811,43 +821,42 @@ class ModulePrinter(ExpressionPrinter):
             self.printer.newline()
 
     def _suite_body(self, node_list):
-
         statements = {
-            'Assign': self.visit_Assign,
-            'AnnAssign': self.visit_AnnAssign,
-            'AugAssign': self.visit_AugAssign,
-            'Expr': self.visit_Expr,
-            'Delete': self.visit_Delete,
-            'Pass': self.visit_Pass,
-            'Import': self.visit_Import,
-            'ImportFrom': self.visit_ImportFrom,
-            'Global': self.visit_Global,
-            'Nonlocal': self.visit_Nonlocal,
-            'Assert': self.visit_Assert,
-            'Break': self.visit_Break,
-            'Continue': self.visit_Continue,
-            'Return': self.visit_Return,
-            'Raise': self.visit_Raise,
-            'Yield': self.visit_Yield,
-            'YieldFrom': self.visit_YieldFrom,
-            'For': self.visit_For,
-            'While': self.visit_While,
-            'Try': self.visit_Try,
-            'TryStar': self.visit_TryStar,
-            'If': self.visit_If,
-            'With': self.visit_With,
-            'ClassDef': self.visit_ClassDef,
-            'FunctionDef': self.visit_FunctionDef,
-            'AsyncFunctionDef': self.visit_AsyncFunctionDef,
-            'AsyncFor': self.visit_AsyncFor,
-            'AsyncWith': self.visit_AsyncWith,
-            'TryFinally': self.visit_TryFinally,
-            'TryExcept': self.visit_TryExcept,
-            'Print': self.visit_Print,
-            'Exec': self.visit_Exec,
-            'Match': self.visit_Match,
-            'match_case': self.visit_match_case,
-            'TypeAlias': self.visit_TypeAlias
+            "Assign": self.visit_Assign,
+            "AnnAssign": self.visit_AnnAssign,
+            "AugAssign": self.visit_AugAssign,
+            "Expr": self.visit_Expr,
+            "Delete": self.visit_Delete,
+            "Pass": self.visit_Pass,
+            "Import": self.visit_Import,
+            "ImportFrom": self.visit_ImportFrom,
+            "Global": self.visit_Global,
+            "Nonlocal": self.visit_Nonlocal,
+            "Assert": self.visit_Assert,
+            "Break": self.visit_Break,
+            "Continue": self.visit_Continue,
+            "Return": self.visit_Return,
+            "Raise": self.visit_Raise,
+            "Yield": self.visit_Yield,
+            "YieldFrom": self.visit_YieldFrom,
+            "For": self.visit_For,
+            "While": self.visit_While,
+            "Try": self.visit_Try,
+            "TryStar": self.visit_TryStar,
+            "If": self.visit_If,
+            "With": self.visit_With,
+            "ClassDef": self.visit_ClassDef,
+            "FunctionDef": self.visit_FunctionDef,
+            "AsyncFunctionDef": self.visit_AsyncFunctionDef,
+            "AsyncFor": self.visit_AsyncFor,
+            "AsyncWith": self.visit_AsyncWith,
+            "TryFinally": self.visit_TryFinally,
+            "TryExcept": self.visit_TryExcept,
+            "Print": self.visit_Print,
+            "Exec": self.visit_Exec,
+            "Match": self.visit_Match,
+            "match_case": self.visit_match_case,
+            "TypeAlias": self.visit_TypeAlias,
         }
 
         for node in node_list:

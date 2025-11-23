@@ -34,6 +34,6 @@ def is_constant_node(node: ast.AST, *types: type[ast.AST]) -> bool:
         elif node.value == Ellipsis:
             return ast.Ellipsis in types
         else:
-            raise RuntimeError('Unknown Constant value %r' % type(node.value))
+            raise RuntimeError("Unknown Constant value %r" % type(node.value))
 
     return False

@@ -11,12 +11,10 @@ from ast import *  # pyright: ignore[reportWildcardImportFromLibrary]
 
 # Ideally we don't import anything else
 
-if 'TypeAlias' in globals():
-
+if "TypeAlias" in globals():
     # Add n and s properties to Constant so it can stand in for Num, Str and Bytes
-    Constant.n = property(lambda self: self.value, lambda self, value: setattr(self, 'value', value))  # type: ignore[assignment]
-    Constant.s = property(lambda self: self.value, lambda self, value: setattr(self, 'value', value))  # type: ignore[assignment]
-
+    Constant.n = property(lambda self: self.value, lambda self, value: setattr(self, "value", value))  # type: ignore[assignment]
+    Constant.s = property(lambda self: self.value, lambda self, value: setattr(self, "value", value))  # type: ignore[assignment]
 
     # These classes are redefined from the ones in ast that complain about deprecation
     # They will continue to work once they are removed from ast
@@ -25,32 +23,29 @@ if 'TypeAlias' in globals():
         def __new__(cls, s, *args, **kwargs):
             return Constant(value=s, *args, **kwargs)
 
-
     class Bytes(Constant):  # type: ignore[no-redef]
         def __new__(cls, s, *args, **kwargs):
             return Constant(value=s, *args, **kwargs)
-
 
     class Num(Constant):  # type: ignore[no-redef]
         def __new__(cls, n, *args, **kwargs):
             return Constant(value=n, *args, **kwargs)
 
-
     class NameConstant(Constant):  # type: ignore[no-redef]
         def __new__(cls, *args, **kwargs):
             return Constant(*args, **kwargs)
 
-
     class Ellipsis(Constant):  # type: ignore[no-redef]
         def __new__(cls, *args, **kwargs):
-            return Constant(value=literal_eval('...'), *args, **kwargs)
+            return Constant(value=literal_eval("..."), *args, **kwargs)
 
 
 class _NoParent(AST):
     """A placeholder class used to indicate that a node has no parent."""
 
     def __repr__(self) -> str:
-        return 'NoParent()'
+        return "NoParent()"
+
 
 def add_parent(node: AST, parent: AST = _NoParent()):
     """
@@ -69,6 +64,7 @@ def add_parent(node: AST, parent: AST = _NoParent()):
     for child in iter_child_nodes(node):
         add_parent(child, node)
 
+
 def get_parent(node: AST) -> AST:
     """
     Retrieves the parent of the given AST node.
@@ -83,10 +79,11 @@ def get_parent(node: AST) -> AST:
     :raises ValueError: If the node has no parent.
     """
 
-    if not hasattr(node, '_parent') or isinstance(node._parent, _NoParent):  # type: ignore[attr-defined]
-        raise ValueError('Node has no parent')
+    if not hasattr(node, "_parent") or isinstance(node._parent, _NoParent):  # type: ignore[attr-defined]
+        raise ValueError("Node has no parent")
 
     return node._parent  # type: ignore[attr-defined]
+
 
 def set_parent(node: AST, parent: AST):
     """
@@ -122,33 +119,33 @@ def set_parent(node: AST, parent: AST):
 
 # Create a dummy class for missing AST nodes
 for _node_type in [
-    'AnnAssign',
-    'AsyncFor',
-    'AsyncFunctionDef',
-    'AsyncFunctionDef',
-    'AsyncWith',
-    'Bytes',
-    'Constant',
-    'DictComp',
-    'Exec',
-    'ListComp',
-    'MatchAs',
-    'MatchMapping',
-    'MatchStar',
-    'NameConstant',
-    'NamedExpr',
-    'Nonlocal',
-    'ParamSpec',
-    'SetComp',
-    'Starred',
-    'TryStar',
-    'TypeVar',
-    'TypeVarTuple',
-    'TemplateStr',
-    'Interpolation',
-    'YieldFrom',
-    'arg',
-    'withitem',
+    "AnnAssign",
+    "AsyncFor",
+    "AsyncFunctionDef",
+    "AsyncFunctionDef",
+    "AsyncWith",
+    "Bytes",
+    "Constant",
+    "DictComp",
+    "Exec",
+    "ListComp",
+    "MatchAs",
+    "MatchMapping",
+    "MatchStar",
+    "NameConstant",
+    "NamedExpr",
+    "Nonlocal",
+    "ParamSpec",
+    "SetComp",
+    "Starred",
+    "TryStar",
+    "TypeVar",
+    "TypeVarTuple",
+    "TemplateStr",
+    "Interpolation",
+    "YieldFrom",
+    "arg",
+    "withitem",
 ]:
     if _node_type not in globals():
         globals()[_node_type] = type(_node_type, (AST,), {})

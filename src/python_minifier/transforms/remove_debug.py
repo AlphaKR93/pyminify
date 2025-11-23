@@ -23,22 +23,36 @@ class RemoveDebug(SuiteTransformer):
         if not isinstance(node, ast.If):
             return False
 
-        if isinstance(node.test, ast.Name) and node.test.id == '__debug__':
+        if isinstance(node.test, ast.Name) and node.test.id == "__debug__":
             return True
 
-        if isinstance(node.test, ast.Compare) and len(node.test.ops) == 1 and isinstance(node.test.ops[0], ast.Is) and self.constant_value(node.test.comparators[0]) is True:
+        if (
+            isinstance(node.test, ast.Compare)
+            and len(node.test.ops) == 1
+            and isinstance(node.test.ops[0], ast.Is)
+            and self.constant_value(node.test.comparators[0]) is True
+        ):
             return True
 
-        if isinstance(node.test, ast.Compare) and len(node.test.ops) == 1 and isinstance(node.test.ops[0], ast.IsNot) and self.constant_value(node.test.comparators[0]) is False:
+        if (
+            isinstance(node.test, ast.Compare)
+            and len(node.test.ops) == 1
+            and isinstance(node.test.ops[0], ast.IsNot)
+            and self.constant_value(node.test.comparators[0]) is False
+        ):
             return True
 
-        if isinstance(node.test, ast.Compare) and len(node.test.ops) == 1 and isinstance(node.test.ops[0], ast.Eq) and self.constant_value(node.test.comparators[0]) is True:
+        if (
+            isinstance(node.test, ast.Compare)
+            and len(node.test.ops) == 1
+            and isinstance(node.test.ops[0], ast.Eq)
+            and self.constant_value(node.test.comparators[0]) is True
+        ):
             return True
 
         return False
 
     def suite(self, node_list, parent):
-
         without_debug = [self.visit(a) for a in filter(lambda n: not self.can_remove(n), node_list)]
 
         if len(without_debug) == 0:
