@@ -19,6 +19,8 @@ from python_minifier.transforms.remove_object_base import RemoveObject
 from python_minifier.transforms.remove_asserts import RemoveAsserts
 from python_minifier.transforms.remove_debug import RemoveDebug
 from python_minifier.transforms.remove_explicit_return_none import RemoveExplicitReturnNone
+from python_minifier.transforms.remove_inline_functions import RemoveInlineFunctions
+from python_minifier.transforms.remove_typing_variables import RemoveTypingVariables
 from python_minifier.transforms.constant_folding import FoldConstants
 from python_minifier.transforms.remove_exception_brackets import remove_no_arg_exception_call
 from python_minifier.transforms.remove_unused_imports import remove_unused_imports
@@ -46,6 +48,8 @@ class PackageMinifyOptions:
     remove_builtin_exception_brackets: bool = True
     constant_folding: bool = True
     allow_utf8_names: bool = True
+    remove_inline_functions: bool = True
+    remove_typing_variables: bool = True
 
 
 class AbstractModule(NamedTuple):
@@ -321,6 +325,16 @@ class ProjectMinifier:
                 for path, module in modules.items():
                     if not path.endswith("__init__.py"):
                         module = remove_unused_imports(module, package.preserved_imports)
+
+        for package, modules in self.packages.items():
+            if package.remove_inline_functions:
+                for path, module in modules.items():
+                    modules[path] = RemoveInlineFunctions()(module)
+
+        for package, modules in self.packages.items():
+            if package.remove_typing_variables:
+                for path, module in modules.items():
+                    modules[path] = RemoveTypingVariables()(module)
 
         for package, modules in self.packages.items():
             if package.hoist_literals:
