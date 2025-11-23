@@ -29,7 +29,41 @@ class DependencyCollector:
         self.visited_modules: Set[str] = set()
         self.to_process: list[str] = []
         self.module_paths: dict[str, str] = {}  # module_name -> file_path
-        self.stdlib_modules = sys.stdlib_module_names if hasattr(sys, 'stdlib_module_names') else set()
+        
+        # Use sys.stdlib_module_names for Python 3.10+ (recommended: Python 3.12+)
+        # For older Python versions, basic stdlib detection via importlib will still work
+        if hasattr(sys, 'stdlib_module_names'):
+            self.stdlib_modules = sys.stdlib_module_names
+        else:
+            # Minimal fallback for common stdlib modules on older Python
+            # Note: This is not comprehensive. Consider upgrading to Python 3.10+
+            self.stdlib_modules = {
+                'abc', 'aifc', 'argparse', 'array', 'ast', 'asynchat', 'asyncio', 'asyncore', 
+                'atexit', 'audioop', 'base64', 'bdb', 'binascii', 'binhex', 'bisect', 'builtins',
+                'bz2', 'calendar', 'cgi', 'cgitb', 'chunk', 'cmath', 'cmd', 'code', 'codecs',
+                'codeop', 'collections', 'colorsys', 'compileall', 'concurrent', 'configparser',
+                'contextlib', 'contextvars', 'copy', 'copyreg', 'crypt', 'csv', 'ctypes', 'curses',
+                'dataclasses', 'datetime', 'dbm', 'decimal', 'difflib', 'dis', 'distutils', 'doctest',
+                'email', 'encodings', 'enum', 'errno', 'faulthandler', 'fcntl', 'filecmp', 'fileinput',
+                'fnmatch', 'fractions', 'ftplib', 'functools', 'gc', 'getopt', 'getpass', 'gettext',
+                'glob', 'graphlib', 'grp', 'gzip', 'hashlib', 'heapq', 'hmac', 'html', 'http', 'imaplib',
+                'imghdr', 'imp', 'importlib', 'inspect', 'io', 'ipaddress', 'itertools', 'json', 'keyword',
+                'lib2to3', 'linecache', 'locale', 'logging', 'lzma', 'mailbox', 'mailcap', 'marshal',
+                'math', 'mimetypes', 'mmap', 'modulefinder', 'multiprocessing', 'netrc', 'nis', 'nntplib',
+                'numbers', 'operator', 'optparse', 'os', 'ossaudiodev', 'pathlib', 'pdb', 'pickle',
+                'pickletools', 'pipes', 'pkgutil', 'platform', 'plistlib', 'poplib', 'posix', 'posixpath',
+                'pprint', 'profile', 'pstats', 'pty', 'pwd', 'py_compile', 'pyclbr', 'pydoc', 'queue',
+                'quopri', 'random', 're', 'readline', 'reprlib', 'resource', 'rlcompleter', 'runpy',
+                'sched', 'secrets', 'select', 'selectors', 'shelve', 'shlex', 'shutil', 'signal',
+                'site', 'smtpd', 'smtplib', 'sndhdr', 'socket', 'socketserver', 'spwd', 'sqlite3',
+                'ssl', 'stat', 'statistics', 'string', 'stringprep', 'struct', 'subprocess', 'sunau',
+                'symtable', 'sys', 'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile',
+                'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token',
+                'tokenize', 'tomllib', 'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo',
+                'types', 'typing', 'typing_extensions', 'unicodedata', 'unittest', 'urllib', 'uu', 'uuid',
+                'venv', 'warnings', 'wave', 'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref',
+                'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', '_thread'
+            }
         
     def add_entry_point(self, file_path: str):
         """
@@ -99,11 +133,9 @@ class DependencyCollector:
                 elif isinstance(node, ast.ImportFrom):
                     if node.module:
                         imports.append(node.module)
-                        # Also check for submodule imports
-                        for alias in node.names:
-                            if alias.name != '*':
-                                submodule = f"{node.module}.{alias.name}"
-                                imports.append(submodule)
+                        # Note: We only import the module itself.
+                        # Imported names (functions, classes) within that module
+                        # are not separate modules and don't need to be resolved.
                                 
         except (SyntaxError, UnicodeDecodeError) as e:
             if self.verbose:
@@ -162,32 +194,30 @@ class DependencyCollector:
             
             if len(parts) > 1:
                 # This module is inside a package, need to preserve structure
-                # Find the root package directory
+                # Find the root package directory by walking up from module_path
                 module_dir = os.path.dirname(module_path)
                 
                 # Go up the directory tree to find the root package
                 current_dir = module_dir
                 root_package_dir = None
                 
-                for _ in range(len(parts) - 1):
-                    parent_dir = os.path.dirname(current_dir)
-                    # Check if there's an __init__.py in the current directory
-                    if os.path.exists(os.path.join(current_dir, '__init__.py')):
+                # Walk up while we find __init__.py files
+                while True:
+                    init_file = os.path.join(current_dir, '__init__.py')
+                    if os.path.exists(init_file):
                         root_package_dir = current_dir
-                    current_dir = parent_dir
-                
-                # Find actual root (go up until no __init__.py in parent)
-                if root_package_dir:
-                    current_dir = root_package_dir
-                    while True:
                         parent_dir = os.path.dirname(current_dir)
+                        
+                        # Check if parent also has __init__.py
                         parent_init = os.path.join(parent_dir, '__init__.py')
                         if os.path.exists(parent_init):
-                            root_package_dir = parent_dir
                             current_dir = parent_dir
                         else:
                             break
-                    
+                    else:
+                        break
+                
+                if root_package_dir:
                     root_package_name = os.path.basename(root_package_dir)
                     target_package_dir = os.path.join(target_dir, root_package_name)
                     
@@ -267,7 +297,11 @@ class DependencyCollector:
                     
                 # Skip if the module is in the target directory (already vendored or part of project)
                 try:
-                    if os.path.commonpath([module_path, target_dir]) == target_dir:
+                    # Check if module_path is within target_dir
+                    abs_module_path = os.path.abspath(module_path)
+                    abs_target_dir = os.path.abspath(target_dir)
+                    common = os.path.commonpath([abs_module_path, abs_target_dir])
+                    if common == abs_target_dir:
                         if self.verbose:
                             print(f"  Skipping project module: {module_name}")
                         continue
