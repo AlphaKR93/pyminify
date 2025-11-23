@@ -104,7 +104,7 @@ class HoistedValue(object):
         return hash(str(type(self._value)) + str(hash(self._value)))
 
     def __eq__(self, other):
-        return type(self._value) == type(other._value) and self._value == other._value
+        return type(self._value) is type(other._value) and self._value == other._value
 
     def __ne__(self, other):
         return not self == other

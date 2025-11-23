@@ -282,6 +282,21 @@ class ProjectMinifier:
                     modules[path] = FoldConstants()(module)
 
         for package, modules in self.packages.items():
+            if package.remove_debug:
+                for path, module in modules.items():
+                    modules[path] = RemoveDebug()(module)
+                    
+        for package, modules in self.packages.items():
+            if package.remove_asserts:
+                for path, module in modules.items():
+                    modules[path] = RemoveAsserts()(module)
+                    
+        for package, modules in self.packages.items():
+            if package.remove_environment_checks:
+                for path, module in modules.items():
+                    modules[path] = RemoveEnvironmentChecks(self.python_version)(module)
+
+        for package, modules in self.packages.items():
             if package.remove_builtin_exception_brackets:
                 for path, module in modules.items():
                     if not module.tainted:
@@ -318,15 +333,6 @@ class ProjectMinifier:
 
         for package, modules in self.packages.items():
             for path, module in modules.items():
-                if package.remove_asserts:
-                    module = RemoveAsserts()(module)
-
-                if package.remove_debug:
-                    module = RemoveDebug()(module)
-                    
-                if package.remove_environment_checks:
-                    module = RemoveEnvironmentChecks(self.python_version)(module)
-
                 if package.convert_posargs_to_args:
                     module = remove_posargs(module)
 

@@ -96,7 +96,7 @@ class FoldConstants(SuiteTransformer):
 
 
 def equal_value_and_type(a, b):
-    if type(a) != type(b):
+    if type(a) is not type(b):
         return False
 
     if isinstance(a, float) and math.isnan(a) and not math.isnan(b):

@@ -20,5 +20,8 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "python_minifier"
 
+[tool.ruff]
+line-length = 120
+
 [tool.ruff.lint]
 ignore = ["E401", "F403", "F405"]

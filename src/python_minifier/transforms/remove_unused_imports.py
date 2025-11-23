@@ -1,6 +1,7 @@
 import python_minifier.ast as ast
 
 from python_minifier.transforms.suite_transformer import SuiteTransformer
+from python_minifier.util import is_constant_node
 
 
 def remove_unused_imports(module, preserved):

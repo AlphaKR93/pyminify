@@ -103,7 +103,10 @@ def reserve_name(name, reservation_scope):
     """
 
     for namespace in reservation_scope:
-        namespace.assigned_names.add(name)
+        # [Fix] Only reserve in active namespaces (nodes that are still in the AST)
+        # If a node was removed by a previous transform (like RemoveDebug), it won't have assigned_names.
+        if hasattr(namespace, 'assigned_names'):
+            namespace.assigned_names.add(name)
 
 
 class UniqueNameAssigner(object):
@@ -177,8 +180,13 @@ class NameAssigner(object):
         :rtype: bool
 
         """
-
-        return all(name not in namespace.assigned_names for namespace in reservation_scope)
+        # [Fix] Check availability only in active namespaces
+        # Nodes removed by transforms (e.g. RemoveDebug) will not have assigned_names attribute.
+        for namespace in reservation_scope:
+            assigned = getattr(namespace, 'assigned_names', None)
+            if assigned is not None and name in assigned:
+                return False
+        return True
 
     def __call__(self, module, prefix_globals, reserved_globals=None):
         assert isinstance(module, ast.Module)

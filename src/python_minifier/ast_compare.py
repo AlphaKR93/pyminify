@@ -56,7 +56,7 @@ def compare_ast(l_ast, r_ast):
             yield i
             i += 1
 
-    if type(l_ast) != type(r_ast):
+    if type(l_ast) is not type(r_ast):
         raise CompareError(l_ast, r_ast, msg='Nodes do not match! %r != %r' % (l_ast, r_ast))
 
     for field in sorted(set(l_ast._fields + r_ast._fields)):

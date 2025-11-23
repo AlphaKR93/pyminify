@@ -15,6 +15,33 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         """
         super(RemoveEnvironmentChecks, self).__init__()
         self.target_version = target_version
+        self.type_checking_names = {'TYPE_CHECKING'}
+        self.typing_module_names = {'typing'}
+        self.version_info_names = {'version_info'}
+        self.sys_module_names = {'sys'}
+
+    def visit_Module(self, node):
+        # Scan imports to find aliases
+        self._scan_imports(node)
+        return super().visit_Module(node)
+
+    def _scan_imports(self, node):
+        for stmt in node.body:
+            if isinstance(stmt, ast.Import):
+                for alias in stmt.names:
+                    if alias.name == 'typing':
+                        self.typing_module_names.add(alias.asname or 'typing')
+                    elif alias.name == 'sys':
+                        self.sys_module_names.add(alias.asname or 'sys')
+            elif isinstance(stmt, ast.ImportFrom):
+                if stmt.module == 'typing':
+                    for alias in stmt.names:
+                        if alias.name == 'TYPE_CHECKING':
+                            self.type_checking_names.add(alias.asname or 'TYPE_CHECKING')
+                elif stmt.module == 'sys':
+                    for alias in stmt.names:
+                        if alias.name == 'version_info':
+                            self.version_info_names.add(alias.asname or 'version_info')
 
     def __call__(self, node):
         return self.visit(node)
@@ -34,13 +61,13 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         left = node.left
         is_version_info = False
         
-        # Case 1: sys.version_info
+        # Case 1: sys.version_info (or alias.version_info)
         if isinstance(left, ast.Attribute):
-            if isinstance(left.value, ast.Name) and left.value.id == 'sys' and left.attr == 'version_info':
+            if isinstance(left.value, ast.Name) and left.value.id in self.sys_module_names and left.attr == 'version_info':
                 is_version_info = True
         
-        # Case 2: version_info (imported) - simple name check
-        elif isinstance(left, ast.Name) and left.id == 'version_info':
+        # Case 2: version_info (imported or aliased)
+        elif isinstance(left, ast.Name) and left.id in self.version_info_names:
             is_version_info = True
 
         if not is_version_info:
@@ -85,13 +112,13 @@ class RemoveEnvironmentChecks(SuiteTransformer):
         """
         Check if node is TYPE_CHECKING
         """
-        # Case 1: TYPE_CHECKING
-        if isinstance(node, ast.Name) and node.id == 'TYPE_CHECKING':
+        # Case 1: TYPE_CHECKING (or alias)
+        if isinstance(node, ast.Name) and node.id in self.type_checking_names:
             return True
         
-        # Case 2: typing.TYPE_CHECKING
+        # Case 2: typing.TYPE_CHECKING (or alias.TYPE_CHECKING)
         if isinstance(node, ast.Attribute):
-            if isinstance(node.value, ast.Name) and node.value.id == 'typing' and node.attr == 'TYPE_CHECKING':
+            if isinstance(node.value, ast.Name) and node.value.id in self.typing_module_names and node.attr == 'TYPE_CHECKING':
                 return True
                 
         return False
