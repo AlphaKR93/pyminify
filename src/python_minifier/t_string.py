@@ -11,7 +11,7 @@ This implementation is much simpler than f_string.py because:
 - Always use all quote types
 """
 
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from python_minifier import UnstableMinification
 from python_minifier.ast_compare import CompareError, compare_ast

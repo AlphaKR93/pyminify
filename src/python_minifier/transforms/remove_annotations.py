@@ -1,7 +1,6 @@
 import sys
 
-import python_minifier.ast_compat as ast
-from python_minifier.ast_annotation import get_parent
+import python_minifier.ast as ast
 
 from python_minifier.transforms.remove_annotations_options import RemoveAnnotationsOptions
 from python_minifier.transforms.suite_transformer import SuiteTransformer
@@ -126,7 +125,7 @@ class RemoveAnnotations(SuiteTransformer):
         return self.generic_visit(node)
 
     def visit_AnnAssign(self, node):
-        parent = get_parent(node)
+        parent = ast.get_parent(node)
         is_class_attribute = isinstance(parent, ast.ClassDef)
 
         if not is_class_attribute:

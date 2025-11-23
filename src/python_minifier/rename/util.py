@@ -1,27 +1,24 @@
-import sys
-
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from python_minifier.util import is_constant_node
 
 
-def create_is_namespace():
-
-    namespace_nodes = (ast.FunctionDef, ast.Lambda, ast.ClassDef, ast.Module, ast.GeneratorExp)
-
-    if sys.version_info >= (2, 7):
-        namespace_nodes += (ast.SetComp, ast.DictComp)
-
-    if sys.version_info >= (3, 0):
-        namespace_nodes += (ast.ListComp,)
-
-    if sys.version_info >= (3, 5):
-        namespace_nodes += (ast.AsyncFunctionDef,)
-
-    return lambda node: isinstance(node, namespace_nodes)
+def is_namespace(node: ast.AST):
+    return isinstance(node, (
+        ast.FunctionDef,
+        ast.Lambda,
+        ast.ClassDef,
+        ast.Module,
+        ast.GeneratorExp,
+        ast.SetComp,    # Python 2.7+
+        ast.DictComp,   # Python 2.7+
+        ast.ListComp,   # Python 3.0+
+        ast.AsyncFunctionDef,  # Python 3.5+
+    ))
 
 
-is_namespace = create_is_namespace()
+def utf8_byte_len(s: str) -> int:
+    return len(s.encode('utf-8'))
 
 
 def iter_child_namespaces(node):
@@ -203,3 +200,18 @@ try:
 except ImportError:
     # noinspection PyCompatibility
     import __builtin__ as builtins  # type: ignore
+
+
+__all__ = (
+    'is_namespace',
+    'utf8_byte_len',
+    'iter_child_namespaces',
+    'get_global_namespace',
+    'get_nonlocal_namespace',
+    'arg_rename_in_place',
+    'insert',
+    'allow_rename_locals',
+    'allow_rename_globals',
+    'find__all__',
+    'builtins'
+)

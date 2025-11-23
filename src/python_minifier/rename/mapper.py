@@ -2,8 +2,7 @@
 For each node in an AST set the namespace to use for name binding and resolution
 """
 
-import python_minifier.ast_compat as ast
-from python_minifier.ast_annotation import get_parent
+import python_minifier.ast as ast
 
 from python_minifier.rename.util import is_namespace
 
@@ -175,7 +174,7 @@ def add_parent(node, namespace=None):
     if isinstance(node, ast.Name) and isinstance(namespace, ast.ClassDef):
         if isinstance(node.ctx, ast.Load):
             namespace.nonlocal_names.add(node.id)
-        elif isinstance(node.ctx, ast.Store) and isinstance(get_parent(node), ast.AugAssign):
+        elif isinstance(node.ctx, ast.Store) and isinstance(ast.get_parent(node), ast.AugAssign):
             namespace.nonlocal_names.add(node.id)
 
     if isinstance(node, ast.NamedExpr):

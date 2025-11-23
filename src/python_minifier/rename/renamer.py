@@ -1,8 +1,8 @@
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
-from python_minifier.rename.binding import NameBinding
-from python_minifier.rename.name_generator import name_filter
-from python_minifier.rename.util import is_namespace
+from .binding import NameBinding
+from .name_generator import name_filter
+from .util import is_namespace
 
 
 def all_bindings(node):
@@ -243,5 +243,5 @@ class NameAssigner(object):
         return module
 
 
-def rename(module, prefix_globals=False, preserved_globals=None):
-    NameAssigner()(module, prefix_globals, preserved_globals)
+def rename(module, prefix_globals=False, preserved_globals=None, allow_unicode=False):
+    NameAssigner(name_generator=name_filter(allow_unicode=allow_unicode))(module, prefix_globals, preserved_globals)

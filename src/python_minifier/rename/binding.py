@@ -1,6 +1,6 @@
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
-from python_minifier.rename.util import arg_rename_in_place, insert
+from .util import arg_rename_in_place, insert, utf8_byte_len
 
 
 class Binding(object):
@@ -316,12 +316,12 @@ class NameBinding(Binding):
 
         """
 
-        current_cost = len(self.references) * len(self._name)
+        current_cost = len(self.references) * utf8_byte_len(self._name)
 
         old_mentions = self.old_mention_count()
         new_mentions = self.new_mention_count()
         additional_bytes = self.additional_byte_cost()
-        rename_cost = (old_mentions * len(self._name)) + (new_mentions * len(new_name)) + additional_bytes
+        rename_cost = (old_mentions * utf8_byte_len(self._name)) + (new_mentions * utf8_byte_len(new_name)) + additional_bytes
 
         return rename_cost <= current_cost
 

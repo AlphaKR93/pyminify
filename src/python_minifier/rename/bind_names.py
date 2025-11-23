@@ -1,8 +1,9 @@
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
-from python_minifier.rename.binding import NameBinding
-from python_minifier.rename.util import arg_rename_in_place, builtins, get_global_namespace
 from python_minifier.transforms.suite_transformer import NodeVisitor
+
+from .binding import NameBinding
+from .util import arg_rename_in_place, builtins, get_global_namespace
 
 
 class NameBinder(NodeVisitor):

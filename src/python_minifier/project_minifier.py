@@ -1,12 +1,11 @@
 import os
-import ast
+import python_minifier.ast as ast
 
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from python_minifier.ast_annotation import add_parent
 from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
-from python_minifier.rename.renamer import NameAssigner, add_assigned
+from python_minifier.rename.renamer import NameAssigner, add_assigned, name_filter
 from python_minifier.module_printer import ModulePrinter
 from python_minifier.transforms.combine_imports import CombineImports
 from python_minifier.transforms.remove_annotations import RemoveAnnotations
@@ -43,12 +42,13 @@ class PackageMinifyOptions:
     remove_explicit_return_none: bool = True
     remove_builtin_exception_brackets: bool = True
     constant_folding: bool = True
+    allow_utf8_names: bool = True
 
 class AbstractModule(NamedTuple):
     package: str
     module: ast.Module
 
-_EMPTY = AbstractModule('', None)
+_EMPTY = AbstractModule('', None)  # pyright: ignore[reportArgumentType]
 
 class ProjectMinifier:
     root_path: str
@@ -85,7 +85,7 @@ class ProjectMinifier:
             print(f"Error parsing {full_path}: {e}")
             return
 
-        add_parent(tree)
+        ast.add_parent(tree)
         add_namespace(tree)
 
         if package.combine_imports:
@@ -262,11 +262,11 @@ class ProjectMinifier:
             for path, module in modules.items():
                 add_assigned(module)
 
-        assigner = NameAssigner()
         for package, modules in self.packages.items():
+            assigner = NameAssigner(name_generator=name_filter(allow_unicode=package.allow_utf8_names))
             if package.mangle:
                 for path, module in modules.items():
-                    assigner(module, prefix_globals=True, reserved_globals=package.preserved)
+                    assigner(module, prefix_globals=False, reserved_globals=package.preserved)
 
         for package, modules in self.packages.items():
             for path, module in modules.items():

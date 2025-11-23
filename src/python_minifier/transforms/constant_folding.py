@@ -1,8 +1,7 @@
 import math
 import sys
 
-import python_minifier.ast_compat as ast
-from python_minifier.ast_annotation import get_parent
+import python_minifier.ast as ast
 
 from python_minifier.ast_compare import compare_ast
 from python_minifier.expression_printer import ExpressionPrinter
@@ -94,7 +93,7 @@ class FoldConstants(SuiteTransformer):
             return node
 
         # New representation is shorter and has the same value, so use it
-        return self.add_child(new_node, get_parent(node), node.namespace)
+        return self.add_child(new_node, ast.get_parent(node), node.namespace)
 
 
 def equal_value_and_type(a, b):

@@ -1,7 +1,6 @@
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from typing import override
-from python_minifier.ast_annotation import get_parent, add_parent as add_node_parent
 
 from python_minifier.rename.mapper import add_parent
 
@@ -188,11 +187,11 @@ class SuiteTransformer(NodeVisitor):
 
             if isinstance(node, (ast.FunctionDef, ast.Module, ast.AsyncFunctionDef)):
                 return node
-            return nearest_function_namespace(get_parent(node))
+            return nearest_function_namespace(ast.get_parent(node))
 
         if namespace is None:
             namespace = nearest_function_namespace(parent)
 
-        add_node_parent(child, parent=parent)
+        ast.add_parent(child, parent=parent)
         add_parent(child, namespace=namespace)
         return child

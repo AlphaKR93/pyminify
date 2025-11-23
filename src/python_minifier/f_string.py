@@ -10,7 +10,7 @@ import copy
 import re
 import sys
 
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from python_minifier import UnstableMinification
 from python_minifier.ast_compare import CompareError, compare_ast
@@ -71,7 +71,18 @@ class FString(object):
             if not self.pep701:
                 nested_allowed.remove(quote)
 
-            for v in self.node.values:
+            # [Fix] Flatten values to handle nested JoinedStr nodes
+            # 중첩된 JoinedStr 노드가 있을 경우 이를 평탄화하여 단일 리스트로 만듭니다.
+            values = []
+            def flatten(node_values):
+                for v in node_values:
+                    if isinstance(v, ast.JoinedStr):
+                        flatten(v.values)
+                    else:
+                        values.append(v)
+            flatten(self.node.values)
+
+            for v in values:
                 if is_constant_node(v, ast.Str):
                     # Could this be used as a debug specifier?
                     if len(quote_candidates) < 10:
@@ -96,7 +107,8 @@ class FString(object):
                     except Exception:
                         continue
                 else:
-                    raise RuntimeError('Unexpected JoinedStr value')
+                    # 에러 메시지에 문제가 된 노드 정보를 포함
+                    raise RuntimeError('Unexpected JoinedStr value: %r' % v)
 
             candidates += [prefix + quote + x + quote for x in quote_candidates]
 

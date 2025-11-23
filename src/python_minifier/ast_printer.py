@@ -10,7 +10,7 @@ fields or field names may be omitted for clarity. It should still be precise and
 
 """
 
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from python_minifier.util import is_constant_node
 

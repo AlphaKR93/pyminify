@@ -1,6 +1,6 @@
 import sys
 
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 from python_minifier.transforms.suite_transformer import SuiteTransformer
 
