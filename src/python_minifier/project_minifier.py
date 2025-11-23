@@ -543,22 +543,26 @@ class ProjectMinifier:
 
     def minify(self):
         # Vendor dependencies before loading project if enabled
-        for package in self.packages.keys():
-            if package.vendor_dependencies:
-                if self.verbose:
-                    print(f"Vendoring dependencies for package: {package.package_path}")
-                
-                collector = DependencyCollector(verbose=self.verbose)
-                
-                # Add all existing Python files in the package as entry points
+        # Use a single collector for all packages to avoid duplication
+        packages_with_vendoring = [pkg for pkg in self.packages.keys() if pkg.vendor_dependencies]
+        
+        if packages_with_vendoring:
+            if self.verbose:
+                print(f"Vendoring dependencies for {len(packages_with_vendoring)} package(s)")
+            
+            collector = DependencyCollector(verbose=self.verbose)
+            
+            # Add all Python files from all packages with vendor_dependencies as entry points
+            for package in packages_with_vendoring:
                 for root, _, files in os.walk(package.package_path):
                     for file in files:
                         if file.endswith('.py'):
                             full_path = os.path.join(root, file)
                             collector.add_entry_point(full_path)
-                
-                # Collect and copy dependencies to the package path
-                collector.collect(package.package_path)
+            
+            # Collect and copy dependencies to the root_path (common location for all packages)
+            # This ensures dependencies are vendored once and shared across all packages
+            collector.collect(self.root_path)
         
         self.load_project()
         self.resolve_cross_module_references()
