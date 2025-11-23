@@ -3,6 +3,7 @@ import sys
 import python_minifier.ast as ast
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import NamedTuple
 
 from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
@@ -50,6 +51,7 @@ class PackageMinifyOptions:
     allow_utf8_names: bool = True
     remove_inline_functions: bool = True
     remove_typing_variables: bool = True
+    obfuscate_module_names: bool = False
 
 
 class AbstractModule(NamedTuple):
@@ -64,6 +66,7 @@ class ProjectMinifier:
     root_path: str
     packages: dict[PackageMinifyOptions, dict[str, ast.Module]]  # path -> PackageMinifyOptions
     modules: dict[str, AbstractModule] = {}  # dotted.name -> ast.Module
+    path_mapping: dict[str, str] = {}  # old_path -> new_path
 
     def __init__(
         self,
@@ -270,6 +273,272 @@ class ProjectMinifier:
                     if b in namespace.bindings:
                         namespace.bindings.remove(b)
 
+    def _get_module_name_from_path(self, path):
+        rel_path = os.path.relpath(path, self.root_path)
+        if path.endswith("__init__.py"):
+            module_name = os.path.dirname(rel_path).replace(os.path.sep, ".")
+            if module_name == ".":
+                return ""
+            return module_name
+        else:
+            return rel_path.replace(os.path.sep, ".")[:-3]
+
+    def obfuscate_modules(self):
+        print("Obfuscating module names...")
+        module_mapping = {}  # old_dotted_name -> new_dotted_name
+        self.path_mapping = {}  # old_full_path -> new_full_path
+
+        # 1. Identify preserved module paths
+        preserved_module_paths = set()
+        
+        # Also track which modules are in obfuscated packages
+        obfuscated_modules = set()
+
+        for package, modules_dict in self.packages.items():
+             for p in package.preserved_names:
+                 if ":" in p:
+                     preserved_module_paths.add(p.split(":")[0])
+                 else:
+                     # Check if p matches a loaded module name
+                     if p in self.modules:
+                         preserved_module_paths.add(p)
+            
+             if package.obfuscate_module_names:
+                 for path in modules_dict.keys():
+                     mod_name = self._get_module_name_from_path(path)
+                     if mod_name:
+                         obfuscated_modules.add(mod_name)
+
+        class Node:
+            def __init__(self, name=""):
+                self.name = name
+                self.new_name = None
+                self.children = {}
+                self.locked = False
+                self.is_module = False # Does this node correspond to an actual module?
+
+        root = Node()
+
+        # 2. Build global tree from all modules
+        all_modules = set()
+        for pkg_modules in self.packages.values():
+             for path in pkg_modules.keys():
+                 mod_name = self._get_module_name_from_path(path)
+                 if mod_name:
+                     all_modules.add(mod_name)
+        
+        # Ensure we also add preserved paths even if not loaded (unlikely but for consistency)
+        for p in preserved_module_paths:
+            all_modules.add(p)
+
+        for mod_name in sorted(all_modules):
+            parts = mod_name.split(".")
+            curr = root
+            for part in parts:
+                if part not in curr.children:
+                    curr.children[part] = Node(part)
+                curr = curr.children[part]
+            curr.is_module = True
+
+        # 3. Mark locked nodes
+        # A node is locked if:
+        # - It is in preserved_module_paths (or part of the path)
+        # - It represents a module that is NOT in obfuscated_modules (if it is a module)
+        # - Note: Directories that are not modules themselves but contain preserved modules 
+        #   must be locked? Yes.
+        
+        # Pass 1: Explicit preservation
+        for p in preserved_module_paths:
+            parts = p.split(".")
+            curr = root
+            for part in parts:
+                if part in curr.children:
+                    curr = curr.children[part]
+                    curr.locked = True
+
+        # Pass 2: Lock non-obfuscated modules and their parents?
+        # Actually, if a module is not in 'obfuscated_modules', it should be locked.
+        # But 'obfuscated_modules' only contains names from packages where obfuscation is ON.
+        # So if a module is not in that set, we must preserve it.
+        
+        for mod_name in all_modules:
+            if mod_name not in obfuscated_modules:
+                # Lock the whole path
+                parts = mod_name.split(".")
+                curr = root
+                for part in parts:
+                    curr = curr.children[part]
+                    curr.locked = True
+
+        # 4. Assign names
+        def assign_names(node, prefix_parts):
+            # Collect children to rename vs preserved
+            to_rename = []
+            used_names = set()
+
+            for name, child in node.children.items():
+                if child.locked:
+                    child.new_name = name
+                    used_names.add(name)
+                else:
+                    to_rename.append(child)
+            
+            # Determine unicode allowance.
+            # We default to True if ANY package allows it? Or check specific package?
+            # Since we built a global tree, it's hard to map back to specific package options for directories.
+            # We'll assume True if any package allows it, or just default True as per user instructions (Milestone 2-7).
+            # "난독화 이름에 유니코드 허용" is checked.
+            scope_gen = name_filter(allow_unicode=True)
+
+            # Sort for determinism
+            to_rename.sort(key=lambda n: n.name)
+
+            for child in to_rename:
+                while True:
+                    candidate = next(scope_gen)
+                    if candidate not in used_names:
+                        child.new_name = candidate
+                        used_names.add(candidate)
+                        break
+            
+            for child in node.children.values():
+                assign_names(child, prefix_parts + [child.new_name])
+
+        assign_names(root, [])
+
+        # 5. Populate mappings
+        def populate_map(node, old_dotted, new_dotted):
+            if old_dotted:
+                module_mapping[old_dotted] = new_dotted
+            
+            for name, child in node.children.items():
+                old_sub = f"{old_dotted}.{name}" if old_dotted else name
+                new_sub = f"{new_dotted}.{child.new_name}" if new_dotted else child.new_name
+                populate_map(child, old_sub, new_sub)
+        
+        populate_map(root, "", "")
+        
+        # Update path_mapping
+        for path in [p for sublist in self.packages.values() for p in sublist.keys()]:
+            old_mod = self._get_module_name_from_path(path)
+            if old_mod in module_mapping:
+                new_mod = module_mapping[old_mod]
+                new_rel_path = new_mod.replace(".", os.path.sep)
+                if path.endswith("__init__.py"):
+                     new_rel_path = os.path.join(new_rel_path, "__init__.py")
+                else:
+                     new_rel_path = new_rel_path + ".py"
+                
+                self.path_mapping[path] = os.path.join(self.root_path, new_rel_path)
+
+        # 6. Rewrite Imports
+        for modules in self.packages.values():
+            for path, module in modules.items():
+                current_mod_name = self._get_module_name_from_path(path)
+                
+                # Determine current package's new name (for relative import resolution)
+                current_pkg = self.modules.get(current_mod_name, _EMPTY).package
+                new_current_pkg = module_mapping.get(current_pkg, current_pkg)
+
+                for node in ast.walk(module):
+                    if isinstance(node, ast.Import):
+                        for alias in node.names:
+                            if alias.name in module_mapping:
+                                old_name = alias.name
+                                new_name = module_mapping[old_name]
+                                
+                                if alias.asname is None:
+                                    # If renamed, usage of `old_name` becomes `new_name`.
+                                    # Use _update_attribute_usages to handle the attribute chain.
+                                    self._update_attribute_usages(module, old_name, new_name)
+                                
+                                alias.name = new_name
+
+                    elif isinstance(node, ast.ImportFrom):
+                        if node.module:
+                             # Resolve absolute
+                            target_mod = None
+                            if node.level > 0:
+                                target_mod = self.resolve_relative_import(current_mod_name, node.level, node.module)
+                            else:
+                                target_mod = node.module
+                            
+                            if target_mod and target_mod in module_mapping:
+                                new_target = module_mapping[target_mod]
+                                
+                                if node.level == 0:
+                                    node.module = new_target
+                                else:
+                                    # Reconstruct relative path
+                                    # new_target is full path "a.b"
+                                    # new_current_pkg is full path "a" (if current was lib)
+                                    
+                                    current_pkg_parts = new_current_pkg.split(".") if new_current_pkg else []
+                                    if node.level - 1 <= len(current_pkg_parts):
+                                        # valid relative import
+                                        base_parts = current_pkg_parts[:len(current_pkg_parts) - (node.level - 1)]
+                                        base_pkg = ".".join(base_parts)
+                                        
+                                        if new_target == base_pkg:
+                                            node.module = None
+                                        elif new_target.startswith(base_pkg + "."):
+                                            node.module = new_target[len(base_pkg)+1:]
+                                        else:
+                                            # Fallback/no-change if structural divergence detected
+                                            pass
+
+    def _update_attribute_usages(self, module, old_name, new_name):
+        """
+        Updates usages like `lib.foo` to `lib.a` when `import lib.foo` was renamed to `import lib.a`.
+        """
+        parts = old_name.split(".")
+        root_name = parts[0]
+        
+        binding = None
+        for b in module.bindings:
+            if b.name == root_name:
+                binding = b
+                break
+        
+        if not binding:
+            return
+
+        new_parts = new_name.split(".")
+        if len(parts) != len(new_parts):
+            return
+            
+        # Rename the root binding if needed
+        if parts[0] != new_parts[0]:
+             if binding.allow_rename:
+                 binding.rename(new_parts[0])
+        
+        # Traverse references for attributes
+        for ref in binding.references:
+            if isinstance(ref, ast.Name) and isinstance(ref.ctx, ast.Load):
+                curr = ref
+                # Verify chain
+                p = ast.get_parent(curr)
+                
+                nodes_to_update = []
+                cursor = p
+                valid_chain = True
+                
+                # We look for attribute chain matching parts[1:]
+                # e.g. old: lib.foo.bar -> new: a.b.c
+                # ref is 'lib' (renamed to 'a'). Parent is Attribute(attr='foo').
+                
+                for i in range(1, len(parts)):
+                     if isinstance(cursor, ast.Attribute) and cursor.attr == parts[i]:
+                         nodes_to_update.append((cursor, new_parts[i]))
+                         cursor = ast.get_parent(cursor)
+                     else:
+                         valid_chain = False
+                         break
+                
+                if valid_chain:
+                    for node, new_attr in nodes_to_update:
+                        node.attr = new_attr
+
     def minify(self):
         self.load_project()
         self.resolve_cross_module_references()
@@ -319,6 +588,9 @@ class ProjectMinifier:
                 for path, module in modules.items():
                     if not module.tainted:
                         remove_no_arg_exception_call(module)
+
+        # Module obfuscation (renaming)
+        self.obfuscate_modules()
 
         for package, modules in self.packages.items():
             if package.remove_unused_imports:
@@ -373,10 +645,18 @@ class ProjectMinifier:
 
         for package, modules in self.packages.items():
             for path, module in modules.items():
+                # Determine output path using mapping or fallback to original
+                output_path = self.path_mapping.get(path, path)
+                
+                # Create directories for new path
+                os.makedirs(os.path.dirname(output_path), exist_ok=True)
+                
                 minified_code = ModulePrinter()(module)
-                with open(path, "w", encoding="utf-8") as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     f.write(minified_code)
+                if path != output_path:
+                    Path(path).unlink()
                 if self.verbose:
-                    print(f"Minified: {path}")
+                    print(f"Minified: {path} -> {output_path}")
 
     __call__ = minify
