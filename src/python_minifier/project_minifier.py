@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
-from python_minifier.rename.renamer import NameAssigner, add_assigned, name_filter
+from python_minifier.rename.renamer import NameAssigner, add_assigned, name_filter, all_bindings
 from python_minifier.printer import ModulePrinter
 from python_minifier.transforms.remove_environment_checks import RemoveEnvironmentChecks
 from python_minifier.transforms.combine_imports import CombineImports
@@ -190,9 +190,13 @@ class ProjectMinifier:
         for project, modules in self.packages.items():
             for path, module in modules.items():
                 current_module_name = path_to_name.get(module)
+                
+                # Store tuples of (namespace, binding) to remove
                 bindings_to_remove = []
 
-                for binding in module.bindings:
+                # [Modified] Use all_bindings to traverse nested scopes (functions, classes)
+                # This ensures imports inside functions are also resolved and minified.
+                for namespace, binding in all_bindings(module):
                     # ... (existing logic for cross-reference resolution)
                     import_node = None
                     alias_node = None
@@ -256,10 +260,11 @@ class ProjectMinifier:
                                     for ref_node in list(binding.references):
                                         target_binding.add_reference(ref_node)
 
-                                    bindings_to_remove.append(binding)
+                                    bindings_to_remove.append((namespace, binding))
 
-                for b in bindings_to_remove:
-                    module.bindings.remove(b)
+                for namespace, b in bindings_to_remove:
+                    if b in namespace.bindings:
+                        namespace.bindings.remove(b)
 
     def minify(self):
         self.load_project()
@@ -315,7 +320,6 @@ class ProjectMinifier:
             if package.remove_unused_imports:
                 for path, module in modules.items():
                     if not path.endswith("__init__.py"):
-                        print("Processing module:", path)
                         module = remove_unused_imports(module, package.preserved_imports)
 
         for package, modules in self.packages.items():
