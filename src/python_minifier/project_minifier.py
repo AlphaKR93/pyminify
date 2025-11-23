@@ -31,9 +31,9 @@ class PackageMinifyOptions:
     combine_imports: bool = True
     hoist_literals: bool = True
     mangle: bool = False
-    preserved: frozenset[str] = frozenset({})
+    preserved_names: frozenset[str] = frozenset({})
     remove_unused_imports: bool = True
-    preserve_imports: frozenset[str] = frozenset({})
+    preserved_imports: frozenset[str] = frozenset({})
     remove_object_base: bool = True
     convert_posargs_to_args: bool = True
     preserve_shebang: bool = False
@@ -134,6 +134,25 @@ class ProjectMinifier:
                 return target_pkg
         return None
 
+    def _get_module_preserved_names(self, preserved_options: frozenset[str], current_module_name: str | None) -> set[str]:
+        """
+        Parse preserved options and return the set of names to preserve for the current module.
+        Supports 'name' (global) and 'module.path:name' (scoped) formats.
+        """
+        preserved_names = set()
+        
+        for p in preserved_options:
+            if ':' in p:
+                # Scoped preservation: module.name:variable
+                mod_part, name_part = p.split(':', 1)
+                if current_module_name == mod_part:
+                    preserved_names.add(name_part)
+            else:
+                # Global preservation
+                preserved_names.add(p)
+        
+        return preserved_names
+
     def resolve_cross_module_references(self):
         print("Resolving cross-module references...")
         
@@ -141,8 +160,12 @@ class ProjectMinifier:
 
         for project, modules in self.packages.items():
             for path, module in modules.items():
+                current_module_name = path_to_name.get(module)
+                # [Modified] Apply preserved names based on module scope
+                preserved_for_module = self._get_module_preserved_names(project.preserved_names, current_module_name)
+                
                 for binding in module.bindings:
-                    if binding.name in project.preserved:
+                    if binding.name in preserved_for_module:
                         binding.disallow_rename()
 
         for project, modules in self.packages.items():
@@ -151,6 +174,7 @@ class ProjectMinifier:
                 bindings_to_remove = []
 
                 for binding in module.bindings:
+                    # ... (existing logic for cross-reference resolution)
                     import_node = None
                     alias_node = None
 
@@ -190,20 +214,24 @@ class ProjectMinifier:
                                         break
 
                                 if target_binding:
-                                    # [Fix 2] 무한 루프 방지: 자기 자신을 참조하는 경우 건너뜀
                                     if target_binding is binding:
                                         continue
 
                                     if self.verbose:
                                         print(f"Linked {path}: {binding.name} -> {target_module_name}.{target_binding.name}")
 
-                                    # [Fix 3] 보존 속성 전파: 로컬이 보존되어야 한다면 타겟(원본)도 보존되어야 함
-                                    if not binding.allow_rename or binding.name in project.preserved:
+                                    # [Modified] Check preservation using scoped logic for the target module?
+                                    # The target binding's disallow_rename is already handled in the first loop above based on its own module name.
+                                    # Here we just propagate the disallow_rename if the local alias is preserved/disallowed.
+                                    
+                                    # Note: project.preserved check here strictly needs to check if THIS binding (in current module) is preserved.
+                                    current_module_preserved = self._get_module_preserved_names(project.preserved_names, current_module_name)
+                                    
+                                    if not binding.allow_rename or binding.name in current_module_preserved:
                                         target_binding.disallow_rename()
 
                                     alias_node._is_project_reference = True
 
-                                    # [Fix 4] 리스트 복사: 반복 중 리스트 수정으로 인한 오류 방지
                                     for ref_node in list(binding.references):
                                         target_binding.add_reference(ref_node)
 
@@ -251,7 +279,7 @@ class ProjectMinifier:
             if package.remove_unused_imports:
                 for path, module in modules.items():
                     if not path.endswith("__init__.py"):
-                        module = remove_unused_imports(module, package.preserve_imports)
+                        module = remove_unused_imports(module, package.preserved_imports)
 
         for package, modules in self.packages.items():
             if package.hoist_literals:
@@ -262,11 +290,19 @@ class ProjectMinifier:
             for path, module in modules.items():
                 add_assigned(module)
 
+        # Prepare map for name resolution (module object -> dotted name)
+        # We need this because 'modules' dict here is path->module, but we track names by dotted name in self.modules
+        path_to_name = {v.module: k for k, v in self.modules.items()}
+
         for package, modules in self.packages.items():
             assigner = NameAssigner(name_generator=name_filter(allow_unicode=package.allow_utf8_names))
             if package.mangle:
                 for path, module in modules.items():
-                    assigner(module, prefix_globals=False, reserved_globals=package.preserved)
+                    # [Modified] Calculate preserved names for this specific module
+                    current_module_name = path_to_name.get(module)
+                    module_specific_preserved = self._get_module_preserved_names(package.preserved_names, current_module_name)
+                    
+                    assigner(module, prefix_globals=False, reserved_globals=module_specific_preserved)
 
         for package, modules in self.packages.items():
             for path, module in modules.items():
