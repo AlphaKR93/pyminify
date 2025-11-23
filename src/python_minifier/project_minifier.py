@@ -9,6 +9,7 @@ from typing import NamedTuple
 from python_minifier.rename import add_namespace, bind_names, resolve_names, rename_literals
 from python_minifier.rename.renamer import NameAssigner, add_assigned, name_filter, all_bindings
 from python_minifier.printer import ModulePrinter
+from python_minifier.dependency_collector import DependencyCollector
 from python_minifier.transforms.remove_environment_checks import RemoveEnvironmentChecks
 from python_minifier.transforms.combine_imports import CombineImports
 from python_minifier.transforms.remove_annotations import RemoveAnnotations
@@ -52,6 +53,7 @@ class PackageMinifyOptions:
     remove_inline_functions: bool = True
     remove_typing_variables: bool = True
     obfuscate_module_names: bool = False
+    vendor_dependencies: bool = False
 
 
 class AbstractModule(NamedTuple):
@@ -540,6 +542,24 @@ class ProjectMinifier:
                         node.attr = new_attr
 
     def minify(self):
+        # Vendor dependencies before loading project if enabled
+        for package in self.packages.keys():
+            if package.vendor_dependencies:
+                if self.verbose:
+                    print(f"Vendoring dependencies for package: {package.package_path}")
+                
+                collector = DependencyCollector(verbose=self.verbose)
+                
+                # Add all existing Python files in the package as entry points
+                for root, _, files in os.walk(package.package_path):
+                    for file in files:
+                        if file.endswith('.py'):
+                            full_path = os.path.join(root, file)
+                            collector.add_entry_point(full_path)
+                
+                # Collect and copy dependencies to the package path
+                collector.collect(package.package_path)
+        
         self.load_project()
         self.resolve_cross_module_references()
 
