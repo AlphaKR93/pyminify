@@ -166,7 +166,8 @@ class ProjectMinifier:
                 
                 for binding in module.bindings:
                     if binding.name in preserved_for_module:
-                        binding.disallow_rename()
+                        # Mark for export instead of disallowing rename
+                        binding.export_as = binding.name
 
         for project, modules in self.packages.items():
             for path, module in modules.items():

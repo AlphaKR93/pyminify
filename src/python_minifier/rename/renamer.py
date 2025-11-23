@@ -240,6 +240,24 @@ class NameAssigner(object):
             if binding.name is not None:
                 reserve_name(binding.name, scope)
 
+        # [New] Generate export aliases for preserved globals that were renamed
+        exports = []
+        # We only handle module-level bindings for this feature
+        for binding in module.bindings:
+            if isinstance(binding, NameBinding) and getattr(binding, 'export_as', None):
+                if binding.name != binding.export_as:
+                    # The binding was renamed, but needs to be exported with its original name
+                    exports.append((binding.export_as, binding.name))
+        
+        # Sort by original name to ensure deterministic output
+        exports.sort(key=lambda x: x[0])
+        
+        for original, new_name in exports:
+            module.body.append(ast.Assign(
+                targets=[ast.Name(id=original, ctx=ast.Store())],
+                value=ast.Name(id=new_name, ctx=ast.Load())
+            ))
+
         return module
 
 

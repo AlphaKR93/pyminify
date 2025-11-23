@@ -299,6 +299,7 @@ class NameBinding(Binding):
 
     def __init__(self, name, *args, **kwargs):
         super(NameBinding, self).__init__(name, *args, **kwargs)
+        self.export_as = None
 
         if name.startswith('__') and name.endswith('__'):
             # System defined name
@@ -322,6 +323,11 @@ class NameBinding(Binding):
         new_mentions = self.new_mention_count()
         additional_bytes = self.additional_byte_cost()
         rename_cost = (old_mentions * utf8_byte_len(self._name)) + (new_mentions * utf8_byte_len(new_name)) + additional_bytes
+
+        if self.export_as:
+            # Cost of adding 'export_as=new_name' (plus newline/semicolon estimate)
+            # We estimate 2 bytes for the assignment operator and separator
+            rename_cost += utf8_byte_len(self.export_as) + utf8_byte_len(new_name) + 2
 
         return rename_cost <= current_cost
 

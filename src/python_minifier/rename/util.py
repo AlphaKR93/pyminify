@@ -191,8 +191,12 @@ def allow_rename_globals(module, rename_globals=False, preserve_globals=None):
     preserve_globals.extend(find__all__(module))
 
     for binding in module.bindings:
-        if rename_globals is False or binding.name in preserve_globals:
+        if rename_globals is False:
             binding.disallow_rename()
+        elif binding.name in preserve_globals:
+            # Instead of disallowing rename completely, we mark it to be exported as an alias
+            # if it gets renamed.
+            binding.export_as = binding.name
 
 
 try:
