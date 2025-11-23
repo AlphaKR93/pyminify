@@ -2,12 +2,15 @@
 Dependency collector for tree shaking and vendoring external dependencies.
 """
 
+from __future__ import annotations
+
 import ast
 import importlib
 import importlib.util
 import os
 import shutil
 import sys
+from collections import deque
 from typing import Set
 
 
@@ -27,7 +30,7 @@ class DependencyCollector:
         """
         self.verbose = verbose
         self.visited_modules: Set[str] = set()
-        self.to_process: list[str] = []
+        self.to_process: deque[str] = deque()
         self.module_paths: dict[str, str] = {}  # module_name -> file_path
         
         # Use sys.stdlib_module_names for Python 3.10+ (recommended: Python 3.12+)
@@ -60,7 +63,7 @@ class DependencyCollector:
                 'symtable', 'sys', 'sysconfig', 'syslog', 'tabnanny', 'tarfile', 'telnetlib', 'tempfile',
                 'termios', 'test', 'textwrap', 'threading', 'time', 'timeit', 'tkinter', 'token',
                 'tokenize', 'tomllib', 'trace', 'traceback', 'tracemalloc', 'tty', 'turtle', 'turtledemo',
-                'types', 'typing', 'typing_extensions', 'unicodedata', 'unittest', 'urllib', 'uu', 'uuid',
+                'types', 'typing', 'unicodedata', 'unittest', 'urllib', 'uu', 'uuid',
                 'venv', 'warnings', 'wave', 'weakref', 'webbrowser', 'winreg', 'winsound', 'wsgiref',
                 'xdrlib', 'xml', 'xmlrpc', 'zipapp', 'zipfile', 'zipimport', 'zlib', '_thread'
             }
@@ -263,7 +266,7 @@ class DependencyCollector:
             
         # Process all entry points and their transitive dependencies
         while self.to_process:
-            current_file = self.to_process.pop(0)
+            current_file = self.to_process.popleft()
             
             if current_file in self.visited_modules:
                 continue
