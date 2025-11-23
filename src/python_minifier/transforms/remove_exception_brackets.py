@@ -8,8 +8,6 @@ When printed, this essentially removes the brackets from the exception name.
 We can't generally know if a name refers to an exception, so we only do this for builtin exceptions
 """
 
-import sys
-
 import python_minifier.ast as ast
 
 from python_minifier.rename.binding import BuiltinBinding
@@ -21,20 +19,8 @@ builtin_exceptions = [
     'ImportError', 'OSError', 'StopIteration', 'ArithmeticError', 'UserWarning', 'PendingDeprecationWarning', 'RuntimeWarning', 'IndentationError', 'UnicodeTranslateError', 'UnboundLocalError',
     'AttributeError', 'EOFError', 'UnicodeWarning', 'BytesWarning', 'NameError', 'IndexError', 'TabError', 'SystemError', 'OverflowError', 'FutureWarning', 'SystemExit', 'Warning',
     'FloatingPointError', 'ReferenceError', 'UnicodeError', 'AssertionError', 'SyntaxWarning', 'UnicodeDecodeError', 'GeneratorExit', 'ImportWarning', 'KeyboardInterrupt', 'ZeroDivisionError',
-    'NotImplementedError'
-]
-
-# These are exceptions only in python 2.7
-builtin_exceptions_2_7 = [
-    'IOError',
-    'StandardError',
-    'EnvironmentError',
-    'VMSError',
-    'WindowsError'
-]
-
-# These are exceptions in 3.3+
-builtin_exceptions_3_3 = [
+    'NotImplementedError',
+    # These are exceptions in 3.3+
     'ChildProcessError',
     'ConnectionError',
     'BrokenPipeError',
@@ -50,17 +36,9 @@ builtin_exceptions_3_3 = [
     'ProcessLookupError',
     'TimeoutError',
     'ResourceWarning',
-]
-
-# These are exceptions in 3.5+
-builtin_exceptions_3_5 = [
-    'StopAsyncIteration',
-    'RecursionError',
-]
-
-# These are exceptions in 3.6+
-builtin_exceptions_3_6 = [
-    'ModuleNotFoundError'
+    'StopAsyncIteration',   # 3.5+
+    'RecursionError',       # 3.5+
+    'ModuleNotFoundError',  # 3.6+
 ]
 
 # These are exceptions in 3.10+
@@ -110,9 +88,6 @@ def _remove_empty_call(binding):
 
 def remove_no_arg_exception_call(module):
     assert isinstance(module, ast.Module)
-
-    if sys.version_info < (3, 0):
-        return module
 
     for binding in module.bindings:
         if not isinstance(binding, BuiltinBinding):

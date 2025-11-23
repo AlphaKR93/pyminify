@@ -1,4 +1,5 @@
 from __future__ import print_function
+from importlib import metadata
 
 import argparse
 import os
@@ -12,28 +13,11 @@ class MinificationNotBeneficialError(Exception):
     """Raised when minification results in larger output than the original."""
     pass
 
-def stdout_write_bytes(data):
-    """Write bytes to stdout with proper Python 2.7/3.x compatibility."""
-    if sys.version_info >= (3, 0):
-        sys.stdout.buffer.write(data)
-    else:
-        sys.stdout.write(data)
 
-
-if sys.version_info >= (3, 8):
-    from importlib import metadata
-
-    try:
-        version = metadata.version('python-minifier')
-    except metadata.PackageNotFoundError:
-        version = '0.0.0'
-else:
-    from pkg_resources import DistributionNotFound, get_distribution
-
-    try:
-        version = get_distribution('python_minifier').version
-    except DistributionNotFound:
-        version = '0.0.0'
+try:
+    version = metadata.version('python-minifier')
+except metadata.PackageNotFoundError:
+    version = '0.0.0'
 
 
 def main():
@@ -62,7 +46,7 @@ examples:
 
     if len(args.path) == 1 and args.path[0] == '-':
         # minify stdin
-        source = sys.stdin.buffer.read() if sys.version_info >= (3, 0) else sys.stdin.read()
+        source = sys.stdin.buffer.read()
         try:
             minified = do_minify(source, 'stdin', args)
         except MinificationNotBeneficialError:
@@ -72,14 +56,14 @@ examples:
                     f.write(source)
             else:
                 # Write original source to stdout
-                stdout_write_bytes(source)
+                sys.stdout.buffer.write(source)
             return
 
         if args.output:
             with open(args.output, 'wb') as f:
                 f.write(minified)
         else:
-            stdout_write_bytes(minified)
+            sys.stdout.buffer.write(minified)
 
     else:
         # minify source paths
@@ -103,7 +87,7 @@ examples:
                         f.write(source)
                 else:
                     # Write original source to stdout
-                    stdout_write_bytes(source)
+                    sys.stdout.buffer.write(source)
                 continue
 
             if args.in_place:
@@ -113,7 +97,7 @@ examples:
                 with open(args.output, 'wb') as f:
                     f.write(minified)
             else:
-                stdout_write_bytes(minified)
+                sys.stdout.buffer.write(minified)
 
 
 def parse_args():

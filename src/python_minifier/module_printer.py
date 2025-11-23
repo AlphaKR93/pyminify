@@ -1,5 +1,3 @@
-import sys
-
 import python_minifier.ast as ast
 
 from .expression_printer import ExpressionPrinter
@@ -28,15 +26,11 @@ class ModulePrinter(ExpressionPrinter):
         assert isinstance(module, ast.Module)
 
         self.visit_Module(module)
-        # On Python 2.7, preserve unicode strings to avoid encoding issues
-        code = unicode(self.printer) if sys.version_info[0] < 3 else str(self.printer)
-        return code.rstrip('\n' + self.indent_char + ';')
+        return str(self.printer).rstrip('\n' + self.indent_char + ';')
 
     @property
     def code(self):
-        # On Python 2.7, preserve unicode strings to avoid encoding issues
-        code = unicode(self.printer) if sys.version_info[0] < 3 else str(self.printer)
-        return code.rstrip('\n' + self.indent_char + ';')
+        return str(self.printer).rstrip('\n' + self.indent_char + ';')
 
     # region Simple Statements
 
@@ -147,12 +141,7 @@ class ModulePrinter(ExpressionPrinter):
 
         self.printer.keyword('return')
         if isinstance(node.value, ast.Tuple):
-            if sys.version_info < (3, 8) and [n for n in node.value.elts if isinstance(n, ast.Starred)]:
-                self.printer.delimiter('(')
-                self._testlist(node.value)
-                self.printer.delimiter(')')
-            else:
-                self._testlist(node.value)
+            self._testlist(node.value)
         elif node.value is not None:
             self._testlist(node.value)
         self.printer.end_statement()

@@ -1,5 +1,3 @@
-import sys
-
 import python_minifier.ast as ast
 
 from python_minifier.transforms.remove_annotations_options import RemoveAnnotationsOptions
@@ -170,8 +168,7 @@ class RemoveAnnotations(SuiteTransformer):
         if should_process:
             # Aggressive removal: if enabled and the attribute has no value, replace annotation with 0.
             if self._options.aggressively_minify_class_attributes and node.value is None:
-                zero_node = ast.Constant(value=0) if sys.version_info >= (3, 8) else ast.Num(0)
-                node.annotation = self.add_child(zero_node, parent=node, namespace=node.namespace)
+                node.annotation = self.add_child(ast.Constant(value=0), parent=node, namespace=node.namespace)
                 return self.generic_visit(node)
 
             # Standard simplification for subscripted types if not aggressively removed.

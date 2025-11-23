@@ -1,5 +1,4 @@
 import math
-import sys
 
 import python_minifier.ast as ast
 
@@ -55,7 +54,7 @@ class FoldConstants(SuiteTransformer):
             new_node = ast.NameConstant(value=original_value)
         elif isinstance(original_value, (int, float, complex)):
             try:
-                if repr(original_value).startswith('-') and not sys.version_info < (3, 0):
+                if repr(original_value).startswith('-'):
                     # Represent negative numbers as a USub UnaryOp, so that the ast roundtrip is correct
                     new_node = ast.UnaryOp(op=ast.USub(), operand=ast.Num(n=-original_value))
                 else:

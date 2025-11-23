@@ -1,7 +1,6 @@
 """Tools for assembling python code from tokens."""
 
 import re
-import sys
 
 
 class TokenTypes(object):
@@ -91,11 +90,7 @@ class TokenPrinter(object):
         self._prefer_single_line = prefer_single_line
         self._allow_invalid_num_warnings = allow_invalid_num_warnings
 
-        # Initialize as unicode string on Python 2.7 to handle Unicode content
-        if sys.version_info[0] < 3:
-            self._code = u''
-        else:
-            self._code = ''
+        self._code = ''
         self.indent = 0
         self.unicode_literals = False
         self.previous_token = TokenTypes.NoToken
@@ -146,14 +141,6 @@ class TokenPrinter(object):
     def stringliteral(self, value):
         """Add a string literal to the output code."""
         s = repr(value)
-
-        if sys.version_info < (3, 0) and self.unicode_literals:
-            if s[0] == 'u':
-                # Remove the u prefix since literals are unicode by default
-                s = s[1:]
-            else:
-                # Add a b prefix to indicate it is NOT unicode
-                s = 'b' + s
 
         if len(s) > 0 and s[0].isalpha() and self.previous_token in [TokenTypes.Identifier, TokenTypes.Keyword, TokenTypes.SoftKeyword]:
             self.delimiter(' ')

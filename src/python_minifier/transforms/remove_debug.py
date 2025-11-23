@@ -1,5 +1,3 @@
-import sys
-
 import python_minifier.ast as ast
 
 from python_minifier.transforms.suite_transformer import SuiteTransformer
@@ -17,9 +15,7 @@ class RemoveDebug(SuiteTransformer):
         return self.visit(node)
 
     def constant_value(self, node):
-        if sys.version_info < (3, 4):
-            return node.id == 'True'
-        elif is_constant_node(node, ast.NameConstant):
+        if is_constant_node(node, ast.NameConstant):
             return node.value
         return None
 

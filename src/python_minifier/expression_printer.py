@@ -67,12 +67,6 @@ class ExpressionPrinter(object):
         elif isinstance(node, ast.Compare):
             return min(self.precedences[n.__class__.__name__] for n in node.ops)
 
-        # Python2 parses negative ints as an ast.Num with a negative value.
-        # Make sure the Num get the precedence of the USub operator in this case.
-        if sys.version_info < (3, 0) and is_constant_node(node, ast.Num):
-            if str(node.n)[0] == '-':
-                return self.precedences['USub']
-
         return self.precedences.get(node.__class__.__name__, 0)
 
     def visit(self, node):
@@ -207,16 +201,6 @@ class ExpressionPrinter(object):
 
     def visit_UnaryOp(self, node):
         self.visit(node.op)
-
-        if sys.version_info < (3, 0) and isinstance(node.op, ast.USub) and is_constant_node(node.operand, ast.Num):
-            # For: -(1), which is parsed as a UnaryOp(USub, Num(1)).
-            # Without this special case it would be printed as -1
-            # This is fine, but python 2 will then parse it at Num(-1) so the AST wouldn't round-trip.
-
-            self.printer.delimiter('(')
-            self.visit_Num(node.operand)
-            self.printer.delimiter(')')
-            return
 
         right_precedence = self.precedence(node.operand)
         op_precedence = self.precedence(node)

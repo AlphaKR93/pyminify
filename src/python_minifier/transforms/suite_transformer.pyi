@@ -1,6 +1,6 @@
 from typing import TypeVar, override
 
-import python_minifier.ast_compat as ast
+import python_minifier.ast as ast
 
 
 class NodeVisitor(ast.NodeVisitor):
