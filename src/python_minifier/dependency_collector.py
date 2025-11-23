@@ -11,7 +11,6 @@ import os
 import shutil
 import sys
 from collections import deque
-from typing import Set
 
 
 class DependencyCollector:
@@ -29,7 +28,7 @@ class DependencyCollector:
         :param verbose: If True, print debug information during collection
         """
         self.verbose = verbose
-        self.visited_modules: Set[str] = set()
+        self.visited_modules: set[str] = set()
         self.to_process: deque[str] = deque()
         self.module_paths: dict[str, str] = {}  # module_name -> file_path
         
@@ -139,11 +138,10 @@ class DependencyCollector:
                         # Note: We only import the module itself.
                         # Imported names (functions, classes) within that module
                         # are not separate modules and don't need to be resolved.
-                                
+        
         except (SyntaxError, UnicodeDecodeError) as e:
             if self.verbose:
                 print(f"Error parsing {file_path}: {e}")
-                
         return imports
         
     def _copy_module(self, module_name: str, module_path: str, target_dir: str):
@@ -297,24 +295,28 @@ class DependencyCollector:
                     if self.verbose:
                         print(f"  Could not resolve: {module_name}")
                     continue
-                    
+                
                 # Skip if the module is in the target directory (already vendored or part of project)
                 try:
-                    # Check if module_path is within target_dir
+                    # Check if module_path is within target_dir by comparing absolute paths
                     abs_module_path = os.path.abspath(module_path)
                     abs_target_dir = os.path.abspath(target_dir)
+                    
+                    # Use os.path.commonpath to find common prefix
                     common = os.path.commonpath([abs_module_path, abs_target_dir])
-                    if common == abs_target_dir:
+                    
+                    # Module is inside target_dir if common path equals target_dir
+                    # and module_path starts with target_dir
+                    if common == abs_target_dir and abs_module_path.startswith(abs_target_dir + os.sep):
                         if self.verbose:
                             print(f"  Skipping project module: {module_name}")
                         continue
                 except ValueError:
                     # Paths are on different drives or one is relative
                     pass
-                    
+                
                 if self.verbose:
                     print(f"  Found external dependency: {module_name} -> {module_path}")
-                    
                 # Record this module
                 self.module_paths[module_name] = module_path
                 
