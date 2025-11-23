@@ -190,7 +190,7 @@ class ProjectMinifier:
         for project, modules in self.packages.items():
             for path, module in modules.items():
                 current_module_name = path_to_name.get(module)
-                
+
                 # Store tuples of (namespace, binding) to remove
                 bindings_to_remove = []
 
