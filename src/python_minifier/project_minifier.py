@@ -278,6 +278,10 @@ class ProjectMinifier:
                                         target_binding.disallow_rename()
 
                                     alias_node._is_project_reference = True
+                                    
+                                    # Debug: Verify the flag was set
+                                    if self.verbose:
+                                        print(f"  Set _is_project_reference on alias: from {target_module_name} import {alias_node.name}")
 
                                     for ref_node in list(binding.references):
                                         target_binding.add_reference(ref_node)
@@ -526,20 +530,6 @@ class ProjectMinifier:
                                     else:
                                         new_alias_name = new_submod
                                     alias.name = new_alias_name
-                                else:
-                                    # Check if this is a renamed symbol (class/function) in the target module
-                                    # Need to look up the binding in the target module
-                                    target_module_obj = self.modules.get(original_target_mod)
-                                    if target_module_obj:
-                                        # Find the binding for this symbol in the target module
-                                        for binding in target_module_obj.bindings:
-                                            if binding.creation_ast_node and hasattr(binding.creation_ast_node, 'name'):
-                                                # Check if this binding's original name matches
-                                                if binding.creation_ast_node.name == alias.name:
-                                                    # This binding was renamed, update the import
-                                                    if binding.name != alias.name:
-                                                        alias.name = binding.name
-                                                    break
 
     def _update_attribute_usages(self, module, old_name, new_name):
         """
