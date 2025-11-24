@@ -620,15 +620,16 @@ class ProjectMinifier:
                 
                 # Check if this is a Python package (has .py files)
                 try:
-                    has_python = any(f.endswith('.py') for f in os.listdir(item_path) if os.path.isfile(os.path.join(item_path, f)))
-                except (OSError, FileNotFoundError):
+                    all_files = os.listdir(item_path)
+                    py_files = [f for f in all_files if f.endswith('.py') and os.path.isfile(os.path.join(item_path, f))]
+                    has_python = len(py_files) > 0
+                    if self.verbose:
+                        print(f"Checking {item}: all_files={all_files[:5]}... py_files={py_files}, has_python={has_python}")
+                except (OSError, FileNotFoundError) as e:
                     # Skip if we can't read the directory
                     if self.verbose:
-                        print(f"Skipping {item}: cannot read directory")
+                        print(f"Skipping {item}: cannot read directory: {e}")
                     continue
-                
-                if self.verbose:
-                    print(f"Checking {item}: has_python={has_python}")
                 
                 if has_python:
                     # This is a vendored dependency, create a package config for it
