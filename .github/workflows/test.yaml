@@ -23,4 +23,4 @@ jobs:
         run: uv sync --locked --all-groups --all-extras --no-progress --color never
 
       - name: Run tests
-        run: pytest -rA --no-fold-skipped --showlocals --tb long --fulltrace --junitxml=junit/test-results.xml --doctest-modules --cov=com --cov-report=xml --cov-report=html
+        run: pytest -rA --no-fold-skipped --showlocals --tb long --fulltrace --junitxml=junit/test-results.xml --doctest-modules
