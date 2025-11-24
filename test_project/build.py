@@ -57,7 +57,7 @@ ProjectMinifier(
         remove_environment_checks=True,
         constant_folding=True,
         remove_inline_functions=True,
-        obfuscate_module_names=True,  # Obfuscate module names for vendored dependencies
+        obfuscate_module_names=False,  # Keep module structure intact for vendored dependencies
     ),
 )()
 

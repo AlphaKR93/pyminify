@@ -238,6 +238,17 @@ class ProjectMinifier:
 
                             if target_module:
                                 imported_name = alias_node.name
+                                
+                                # Check if the imported name is actually a submodule rather than a binding
+                                # e.g., "from starlette import status" where status is starlette.status
+                                submodule_fullname = f"{target_module_name}.{imported_name}"
+                                is_submodule = submodule_fullname in self.modules
+                                
+                                # Skip cross-module reference resolution for submodule imports
+                                # They should be handled by module name obfuscation instead
+                                if is_submodule:
+                                    continue
+                                
                                 target_binding = None
 
                                 for b in target_module.module.bindings:
@@ -459,6 +470,8 @@ class ProjectMinifier:
                                 alias.name = new_name
 
                     elif isinstance(node, ast.ImportFrom):
+                        # Track original module name before obfuscation for submodule lookups
+                        original_target_mod = None
                         if node.module:
                             # Resolve absolute
                             target_mod = None
@@ -466,6 +479,8 @@ class ProjectMinifier:
                                 target_mod = self.resolve_relative_import(current_mod_name, node.level, node.module)
                             else:
                                 target_mod = node.module
+                            
+                            original_target_mod = target_mod  # Save original before obfuscation
 
                             if target_mod and target_mod in module_mapping:
                                 new_target = module_mapping[target_mod]
@@ -490,6 +505,23 @@ class ProjectMinifier:
                                         else:
                                             # Fallback/no-change if structural divergence detected
                                             pass
+                        
+                        # Also update imported names if they are submodules that were obfuscated
+                        # e.g., "from starlette import status" where status is starlette.status submodule
+                        # Use the original module name (before obfuscation) to check submodules
+                        if original_target_mod:
+                            for alias in node.names:
+                                # Check if this imported name is actually a submodule
+                                submod_name = f"{original_target_mod}.{alias.name}"
+                                if submod_name in module_mapping:
+                                    # This imported name is a submodule that was obfuscated
+                                    new_submod = module_mapping[submod_name]
+                                    # Extract just the last part (the submodule name within the package)
+                                    if "." in new_submod:
+                                        new_alias_name = new_submod.split(".")[-1]
+                                    else:
+                                        new_alias_name = new_submod
+                                    alias.name = new_alias_name
 
     def _update_attribute_usages(self, module, old_name, new_name):
         """
