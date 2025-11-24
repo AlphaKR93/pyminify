@@ -77,10 +77,12 @@ class ProjectMinifier:
         *packages: PackageMinifyOptions,
         python_version: tuple[int, int, int, str, int] = sys.version_info,
         verbose: bool = False,
+        vendored_deps_options: PackageMinifyOptions | None = None,
     ):
         self.python_version = python_version
         self.verbose = verbose
         self.root_path = root_path
+        self.vendored_deps_options = vendored_deps_options
         self.packages = {
             PackageMinifyOptions(**(package.__dict__ | {"package_path": os.path.abspath(package.package_path)})): {}
             for package in packages
@@ -583,34 +585,65 @@ class ProjectMinifier:
                 
                 if has_python:
                     # This is a vendored dependency, create a package config for it
-                    # Use more conservative settings for vendored dependencies to avoid breaking them
+                    # Use vendored_deps_options if provided, otherwise use conservative settings
                     reference_package = packages_with_vendoring[0]
-                    vendored_pkg = PackageMinifyOptions(
-                        package_path=item_path,
-                        remove_annotations=reference_package.remove_annotations,
-                        remove_pass=reference_package.remove_pass,
-                        remove_literal_statements=False,  # Keep literals in deps
-                        combine_imports=reference_package.combine_imports,
-                        hoist_literals=False,  # Don't hoist in deps
-                        mangle=False,  # Don't mangle vendored deps
-                        preserved_names=reference_package.preserved_names,
-                        remove_unused_imports=False,  # Keep all imports in deps
-                        preserved_imports=reference_package.preserved_imports,
-                        remove_object_base=reference_package.remove_object_base,
-                        convert_posargs_to_args=reference_package.convert_posargs_to_args,
-                        preserve_shebang=reference_package.preserve_shebang,
-                        remove_asserts=False,  # Keep asserts in deps
-                        remove_debug=False,  # Keep debug in deps
-                        remove_environment_checks=False,  # Keep env checks in deps
-                        remove_explicit_return_none=reference_package.remove_explicit_return_none,
-                        remove_builtin_exception_brackets=reference_package.remove_builtin_exception_brackets,
-                        constant_folding=False,  # Don't fold constants in deps
-                        allow_utf8_names=reference_package.allow_utf8_names,
-                        remove_inline_functions=False,  # Keep inline functions in deps
-                        remove_typing_variables=False,  # Keep typing vars in deps
-                        obfuscate_module_names=False,  # Don't obfuscate vendored dep names
-                        vendor_dependencies=False  # Don't vendor again
-                    )
+                    
+                    if self.vendored_deps_options:
+                        # Use provided vendored deps options but override package_path and vendor_dependencies
+                        vendored_pkg = PackageMinifyOptions(
+                            package_path=item_path,
+                            remove_annotations=self.vendored_deps_options.remove_annotations,
+                            remove_pass=self.vendored_deps_options.remove_pass,
+                            remove_literal_statements=self.vendored_deps_options.remove_literal_statements,
+                            combine_imports=self.vendored_deps_options.combine_imports,
+                            hoist_literals=self.vendored_deps_options.hoist_literals,
+                            mangle=self.vendored_deps_options.mangle,
+                            preserved_names=self.vendored_deps_options.preserved_names,
+                            remove_unused_imports=self.vendored_deps_options.remove_unused_imports,
+                            preserved_imports=self.vendored_deps_options.preserved_imports,
+                            remove_object_base=self.vendored_deps_options.remove_object_base,
+                            convert_posargs_to_args=self.vendored_deps_options.convert_posargs_to_args,
+                            preserve_shebang=self.vendored_deps_options.preserve_shebang,
+                            remove_asserts=self.vendored_deps_options.remove_asserts,
+                            remove_debug=self.vendored_deps_options.remove_debug,
+                            remove_environment_checks=self.vendored_deps_options.remove_environment_checks,
+                            remove_explicit_return_none=self.vendored_deps_options.remove_explicit_return_none,
+                            remove_builtin_exception_brackets=self.vendored_deps_options.remove_builtin_exception_brackets,
+                            constant_folding=self.vendored_deps_options.constant_folding,
+                            allow_utf8_names=self.vendored_deps_options.allow_utf8_names,
+                            remove_inline_functions=self.vendored_deps_options.remove_inline_functions,
+                            remove_typing_variables=self.vendored_deps_options.remove_typing_variables,
+                            obfuscate_module_names=self.vendored_deps_options.obfuscate_module_names,
+                            vendor_dependencies=False  # Don't vendor again
+                        )
+                    else:
+                        # Use conservative settings for vendored dependencies to avoid breaking them
+                        vendored_pkg = PackageMinifyOptions(
+                            package_path=item_path,
+                            remove_annotations=reference_package.remove_annotations,
+                            remove_pass=reference_package.remove_pass,
+                            remove_literal_statements=False,  # Keep literals in deps
+                            combine_imports=reference_package.combine_imports,
+                            hoist_literals=False,  # Don't hoist in deps
+                            mangle=False,  # Don't mangle vendored deps
+                            preserved_names=reference_package.preserved_names,
+                            remove_unused_imports=False,  # Keep all imports in deps
+                            preserved_imports=reference_package.preserved_imports,
+                            remove_object_base=reference_package.remove_object_base,
+                            convert_posargs_to_args=reference_package.convert_posargs_to_args,
+                            preserve_shebang=reference_package.preserve_shebang,
+                            remove_asserts=False,  # Keep asserts in deps
+                            remove_debug=False,  # Keep debug in deps
+                            remove_environment_checks=False,  # Keep env checks in deps
+                            remove_explicit_return_none=reference_package.remove_explicit_return_none,
+                            remove_builtin_exception_brackets=reference_package.remove_builtin_exception_brackets,
+                            constant_folding=False,  # Don't fold constants in deps
+                            allow_utf8_names=reference_package.allow_utf8_names,
+                            remove_inline_functions=False,  # Keep inline functions in deps
+                            remove_typing_variables=False,  # Keep typing vars in deps
+                            obfuscate_module_names=False,  # Don't obfuscate vendored dep names
+                            vendor_dependencies=False  # Don't vendor again
+                        )
                     self.packages[vendored_pkg] = {}
                     if self.verbose:
                         print(f"Added vendored dependency package: {item}")

@@ -1,0 +1,2 @@
+from C import x509 as A
+B={A.ReasonFlags.unspecified:0,A.ReasonFlags.key_compromise:1,A.ReasonFlags.ca_compromise:2,A.ReasonFlags.affiliation_changed:3,A.ReasonFlags.superseded:4,A.ReasonFlags.cessation_of_operation:5,A.ReasonFlags.certificate_hold:6,A.ReasonFlags.remove_from_crl:8,A.ReasonFlags.privilege_withdrawn:9,A.ReasonFlags.aa_compromise:10}

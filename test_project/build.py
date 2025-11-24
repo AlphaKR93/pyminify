@@ -38,4 +38,16 @@ ProjectMinifier(
         vendor_dependencies=True,
     ),
     python_version=(3, 12),
+    vendored_deps_options=PackageMinifyOptions(
+        package_path="",  # Will be overridden
+        remove_literal_statements=True,
+        hoist_literals=True,
+        mangle=True,
+        remove_unused_imports=True,
+        remove_environment_checks=True,
+        constant_folding=True,
+        remove_inline_functions=True,
+        obfuscate_module_names=True,
+    ),
 )()
+
