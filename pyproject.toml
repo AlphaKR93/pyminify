@@ -24,8 +24,21 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-name = "python_minifier"
 
+[tool.basedpyright]
+include = ["src", "tests"]
+exclude = ["test_project"]
+indexing = true
+verboseOutput = true
+
 [tool.ruff]
 line-length = 120
 
 [tool.ruff.lint]
 ignore = ["E401", "F403", "F405"]
+
+[tool.ty.src]
+include = ["src", "tests"]
+exclude = ["test_project"]
+
+[tool.ty.environment]
+root = ["./src"]
