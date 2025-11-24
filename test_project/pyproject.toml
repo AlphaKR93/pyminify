@@ -17,6 +17,9 @@ build = [
 dev = [
     "pydevd-pycharm>=253.28294.166",
 ]
+test = [
+    "uvicorn>=0.38.0",
+]
 
 [tool.uv.sources]
 pyminify = { path = "../" }

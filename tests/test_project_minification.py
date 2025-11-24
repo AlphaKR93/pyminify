@@ -148,8 +148,6 @@ def test_minified_app_structure():
         assert len(root_dirs) > 2, f"Expected multiple directories at root, found: {[d.name for d in root_dirs]}"
 
 
-@pytest.mark.skipif(not shutil.which("uvicorn"), reason="uvicorn not installed")
-@pytest.mark.skipif(not shutil.which("uv"), reason="uv not installed")
 def test_minified_app_runs_with_uvicorn():
     """Test that the minified app can run with uvicorn."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -166,13 +164,25 @@ def test_minified_app_runs_with_uvicorn():
             text=True,
             timeout=120
         )
-        
+    
         if result.returncode != 0:
             pytest.skip(f"build.py failed: {result.stderr}")
+
+        # Sync dependencies
+        result = subprocess.run(
+            ["uv", "sync", "--only-group=test"],
+            cwd=tmp_project,
+            capture_output=True,
+            text=True,
+            timeout=120
+        )
+
+        if result.returncode != 0:
+            pytest.fail("uv sync failed: {result.stderr}")
         
         # Try to start uvicorn server using uv run
         proc = subprocess.Popen(
-            ["uv", "run", "uvicorn", "app.app:app", "--host", "127.0.0.1", "--port", "8999"],
+            [".venv/bin/uvicorn", "app.app:app", "--host", "127.0.0.1", "--port", "8999"],
             cwd=tmp_project,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -187,9 +197,6 @@ def test_minified_app_runs_with_uvicorn():
             poll = proc.poll()
             if poll is not None:
                 stdout, stderr = proc.communicate()
-                # Don't fail if it's a missing dependency issue during testing
-                if "ModuleNotFoundError" in stderr or "ImportError" in stderr:
-                    pytest.skip(f"Dependencies not available in test environment: {stderr[:200]}")
                 pytest.fail(f"uvicorn failed to start:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}")
             
             # Test with httpx if available
@@ -200,11 +207,11 @@ def test_minified_app_runs_with_uvicorn():
                 assert response.status_code == 200
                 assert response.json() == {"success": "Hello, world!"}
                 
-                response = httpx.get("http://127.0.0.1:8999/v0", timeout=5.0)
+                response = httpx.get("http://127.0.0.1:8999/v0/", timeout=5.0)
                 assert response.status_code == 200
                 assert response.json() == {"version": "0"}
                 
-                response = httpx.get("http://127.0.0.1:8999/v0/router", timeout=5.0)
+                response = httpx.get("http://127.0.0.1:8999/v0/router/", timeout=5.0)
                 assert response.status_code == 200
                 assert response.json() == {"message": "Hello from utils!"}
                 
