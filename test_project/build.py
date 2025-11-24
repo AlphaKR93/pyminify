@@ -15,11 +15,7 @@ ProjectMinifier(
             aggressively_minify_class_attributes=False,
         ),
         mangle=True,
-        preserved_names=frozenset(
-            {
-                "app.app:app",
-            }
-        ),
+        preserved_names=frozenset({"app.app:app",}),
         remove_asserts=True,
         remove_debug=True,
         obfuscate_module_names=True,
