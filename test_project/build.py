@@ -37,7 +37,6 @@ ProjectMinifier(
         obfuscate_module_names=True,
         vendor_dependencies=True,
     ),
-    python_version=(3, 12),
     vendored_deps_options=PackageMinifyOptions(
         package_path="",  # Will be overridden
         remove_literal_statements=True,
@@ -49,5 +48,5 @@ ProjectMinifier(
         remove_inline_functions=True,
         obfuscate_module_names=True,
     ),
+    python_version=(3, 12),
 )()
-
