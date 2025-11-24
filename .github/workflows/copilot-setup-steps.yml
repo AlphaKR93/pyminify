@@ -15,6 +15,12 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Setup Go
+        uses: actions/setup-go@v6
+
+      - name: Install LSP MCP server
+        run: go install github.com/isaacphi/mcp-language-server@latest
+
       - name: Checkout sources
         uses: actions/checkout@v5
 
@@ -27,16 +33,3 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked --all-groups --all-extras
-        
-      - name: Checkout LSP MCP server
-        uses: actions/checkout@v5
-        with:
-          repository: isaacphi/mcp-language-server
-          path: /home/runner/work/_temp/mcp-language-server
-          
-      - name: Setup Go
-        uses: actions/setup-go@v6
-
-      - name: Install LSP MCP server
-        working-directory: /home/runner/work/_temp/mcp-language-server
-        run: go build
