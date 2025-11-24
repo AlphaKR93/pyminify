@@ -11,6 +11,12 @@ dependencies = [
 ]
 
 [dependency-groups]
+build = [
+    "pyminify",
+]
 dev = [
     "pydevd-pycharm>=253.28294.166",
 ]
+
+[tool.uv.sources]
+pyminify = { path = "../" }

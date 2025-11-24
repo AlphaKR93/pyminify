@@ -55,6 +55,9 @@ dependencies = [
 ]
 
 [package.dev-dependencies]
+build = [
+    { name = "pyminify" },
+]
 dev = [
     { name = "pydevd-pycharm" },
 ]
@@ -68,6 +71,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
+build = [{ name = "pyminify", directory = "../" }]
 dev = [{ name = "pydevd-pycharm", specifier = ">=253.28294.166" }]
 
 [[package]]
@@ -275,6 +279,19 @@ name = "pydevd-pycharm"
 version = "253.28294.166"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c0/5a/a24bf77cea4048fae76484ade47b7d5fe0778f142a0c6dd703ddc8e21a99/pydevd_pycharm-253.28294.166.tar.gz", hash = "sha256:d15a2420e8f5e769eb58714c067beb97a503453a986306584770925664f09465", size = 7635330, upload-time = "2025-11-19T21:15:30.919Z" }
+
+[[package]]
+name = "pyminify"
+version = "0.1.3"
+source = { directory = "../" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "basedpyright", specifier = ">=1.34.0" },
+    { name = "ruff", specifier = ">=0.14.6" },
+]
 
 [[package]]
 name = "python-dotenv"
