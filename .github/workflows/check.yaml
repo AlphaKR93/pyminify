@@ -8,7 +8,6 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout sources
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
@@ -28,13 +27,17 @@ jobs:
         run: uv install ruff ty basedpyright --no-progress --color never
 
       - name: Lint codes with ruff
+        if: always()
         run: ruff check --output-format github
 
       - name: Check code styles with ruff
+        if: always()
         run: ruff format --preview --check --output-format github
 
       - name: Check code health with ty
+        if: always()
         run: ty check --color never --no-progress --output-format github
 
       - name: Run basedpyright
+        if: always()
         run: basedpyright --stats
