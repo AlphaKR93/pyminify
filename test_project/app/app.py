@@ -1,10 +1,11 @@
-from fastapi import Æ
-from.A import D
-A=Æ()
-A.mount('/v0',D)
-@A.get('/')
-async def E():return{'success':'Hello, world!'}
-B=A
-C=B
-F=C
-app=F
+from fastapi import FastAPI
+
+from .v0 import app as _v0
+
+
+app = FastAPI()
+app.mount("/v0", _v0)
+
+@app.get("")
+async def root():
+    return {"success": "Hello, world!"}
