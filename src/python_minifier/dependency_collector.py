@@ -424,9 +424,17 @@ class DependencyCollector:
                         if not self._is_stdlib_module(root_module):
                             if root_module not in imported_packages:
                                 imported_packages.add(root_module)
-                                # If this package is installed, add its __init__.py to check queue
+                                # If this package is installed, add ALL its Python files to check queue
                                 if root_module in installed_packages:
-                                    to_check.append(installed_packages[root_module])
+                                    pkg_path = installed_packages[root_module]
+                                    pkg_dir = os.path.dirname(pkg_path)
+                                    # Walk the package directory to find all Python files
+                                    for root, _, files in os.walk(pkg_dir):
+                                        for file in files:
+                                            if file.endswith('.py'):
+                                                full_path = os.path.join(root, file)
+                                                if full_path not in checked_files:
+                                                    to_check.append(full_path)
                 except Exception as e:
                     if self.verbose:
                         print(f"  Error parsing {current_file}: {e}")
