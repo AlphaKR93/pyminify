@@ -1,2 +1,0 @@
-A=int
-D=dict

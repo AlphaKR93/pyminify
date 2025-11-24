@@ -1,2 +1,0 @@
-__version__='5.2.0'
-A=__version__.split('.')
