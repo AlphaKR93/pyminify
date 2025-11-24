@@ -112,11 +112,7 @@ class FString(object):
                         fv_candidates = FormattedValue(v, nested_allowed, self.pep701).get_candidates()
                         if not fv_candidates:
                             continue
-                        quote_candidates = [
-                            x + y
-                            for x in quote_candidates
-                            for y in fv_candidates
-                        ] + completed
+                        quote_candidates = [x + y for x in quote_candidates for y in fv_candidates] + completed
                         debug_specifier_candidates = []
                     except Exception:
                         continue

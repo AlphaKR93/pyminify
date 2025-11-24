@@ -1,4 +1,5 @@
 """Tests for test_project minification and runtime."""
+
 import subprocess
 import tempfile
 import shutil
@@ -16,34 +17,34 @@ def setup_test_project_with_uv(tmpdir):
     """Helper function to set up test_project with uv in a temp directory."""
     # Copy test_project to temp directory
     tmp_project = Path(tmpdir) / "test_project"
-    shutil.copytree(TEST_PROJECT_DIR, tmp_project, ignore=shutil.ignore_patterns('.venv', '__pycache__'))
-    
+    shutil.copytree(TEST_PROJECT_DIR, tmp_project, ignore=shutil.ignore_patterns(".venv", "__pycache__"))
+
     # Copy the main project for the local pyminify dependency
     tmp_pyminify = Path(tmpdir) / "pyminify"
-    shutil.copytree(PROJECT_ROOT, tmp_pyminify, ignore=shutil.ignore_patterns('.venv', '__pycache__', 'test_project', 'tests', '.git'))
-    
+    shutil.copytree(
+        PROJECT_ROOT,
+        tmp_pyminify,
+        ignore=shutil.ignore_patterns(".venv", "__pycache__", "test_project", "tests", ".git"),
+    )
+
     # Update the pyminify source path in pyproject.toml to point to tmp_pyminify
     pyproject_path = tmp_project / "pyproject.toml"
     pyproject_content = pyproject_path.read_text()
     # Replace the relative path with the temp location
     pyproject_content = pyproject_content.replace('{ path = "../" }', f'{{ path = "{tmp_pyminify}" }}')
     pyproject_path.write_text(pyproject_content)
-    
+
     # Sync ALL dependencies including build group using uv
-    # - Regular dependencies (fastapi, httpx, orjson, vercel) 
+    # - Regular dependencies (fastapi, httpx, orjson, vercel)
     # - Build group dependencies (pyminify)
     # This ensures fastapi et al are available when build.py runs via uv, so they can be vendored
     # The test group (uvicorn) is installed separately after minification to verify vendoring worked
     sync_result = subprocess.run(
-        ["uv", "sync", "--group", "build"],
-        cwd=tmp_project,
-        capture_output=True,
-        text=True,
-        timeout=120
+        ["uv", "sync", "--group", "build"], cwd=tmp_project, capture_output=True, text=True, timeout=120
     )
     if sync_result.returncode != 0:
         raise RuntimeError(f"uv sync failed:\nSTDOUT:\n{sync_result.stdout}\nSTDERR:\n{sync_result.stderr}")
-    
+
     return tmp_project
 
 
@@ -60,67 +61,63 @@ def test_build_script_runs():
     # Check if uv is available
     if not shutil.which("uv"):
         pytest.skip("uv not available")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_project = setup_test_project_with_uv(tmpdir)
-        
+
         # Run build.py with uv
-        result = subprocess.run(
-            ["uv", "run", "build.py"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
+        result = subprocess.run(["uv", "run", "build.py"], cwd=tmp_project, capture_output=True, text=True, timeout=120)
+
         # Print output for debugging
         print(f"build.py STDOUT:\n{result.stdout}")
         print(f"build.py STDERR:\n{result.stderr}")
-        
+
         if result.returncode != 0:
             print(f"build.py failed with return code {result.returncode}")
-        
+
         # Check it completed successfully
         assert result.returncode == 0, f"build.py failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
-        
+
         # Print what directories were created
-        all_dirs = [d.name for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.')]
+        all_dirs = [d.name for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith(".")]
         print(f"Directories after build: {all_dirs}")
-        
+
         # Verify vendored dependencies exist (they might be obfuscated with single-letter names)
         # Check for directories other than app and lib
-        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
+        root_dirs = [
+            d
+            for d in tmp_project.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name not in ["app", "lib"]
+        ]
         print(f"Potential vendored dependency directories: {[d.name for d in root_dirs]}")
-        
+
         # Verify vendored dependencies were created
         assert len(root_dirs) > 0, f"No vendored dependencies found. Directories: {all_dirs}"
-        
+
 
 def test_vendored_dependencies_are_minified():
     """Test that vendored dependencies are actually minified."""
     # Check if uv is available
     if not shutil.which("uv"):
         pytest.skip("uv not available")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_project = setup_test_project_with_uv(tmpdir)
-        
+
         # Run build.py with uv
-        result = subprocess.run(
-            ["uv", "run", "build.py"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
+        result = subprocess.run(["uv", "run", "build.py"], cwd=tmp_project, capture_output=True, text=True, timeout=120)
+
         assert result.returncode == 0, f"build.py failed: {result.stderr}"
-        
+
         # Check that vendored dependencies exist and appear minified
         # Since obfuscate_module_names is True, dependencies might have obfuscated names
-        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
+        root_dirs = [
+            d
+            for d in tmp_project.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name not in ["app", "lib"]
+        ]
         assert len(root_dirs) > 0, "No vendored dependencies found"
-        
+
         # Check one of the vendored packages has minified content
         # Look for any Python files in vendored directories
         for vendor_dir in root_dirs:
@@ -131,7 +128,7 @@ def test_vendored_dependencies_are_minified():
                 if sample_file.stat().st_size > 0:
                     content = sample_file.read_text()
                     # Minified code should have less blank lines
-                    blank_line_ratio = content.count('\n\n\n') / max(content.count('\n'), 1)
+                    blank_line_ratio = content.count("\n\n\n") / max(content.count("\n"), 1)
                     assert blank_line_ratio < 0.1, f"File {sample_file} doesn't appear minified"
                     break
 
@@ -141,28 +138,24 @@ def test_minified_app_structure():
     # Check if uv is available
     if not shutil.which("uv"):
         pytest.skip("uv not available")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_project = setup_test_project_with_uv(tmpdir)
-        
+
         # Run build.py with uv
-        result = subprocess.run(
-            ["uv", "run", "build.py"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
+        result = subprocess.run(["uv", "run", "build.py"], cwd=tmp_project, capture_output=True, text=True, timeout=120)
+
         assert result.returncode == 0, f"build.py failed: {result.stderr}"
-        
+
         # Check app files exist (note: files may be obfuscated)
         assert (tmp_project / "app" / "app.py").exists()
         # v0 module gets obfuscated, so we check for any obfuscated directories
-        obfuscated_dirs = [d for d in (tmp_project / "app").iterdir() if d.is_dir() and d.name not in ["__pycache__", "v0"]]
+        obfuscated_dirs = [
+            d for d in (tmp_project / "app").iterdir() if d.is_dir() and d.name not in ["__pycache__", "v0"]
+        ]
         assert len(obfuscated_dirs) > 0, "Expected at least one obfuscated subdirectory in app/"
         # Check lib still exists (it gets obfuscated at root level)
-        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.')]
+        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith(".")]
         assert len(root_dirs) > 2, f"Expected multiple directories at root, found: {[d.name for d in root_dirs]}"
 
 
@@ -171,49 +164,43 @@ def test_minified_app_runs_with_uvicorn():
     # Check if uv is available
     if not shutil.which("uv"):
         pytest.skip("uv not available")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             tmp_project = setup_test_project_with_uv(tmpdir)
         except RuntimeError as e:
             pytest.skip(str(e))
-        
+
         # Run build.py with uv - this should vendor fastapi and other dependencies
-        result = subprocess.run(
-            ["uv", "run", "build.py"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
+        result = subprocess.run(["uv", "run", "build.py"], cwd=tmp_project, capture_output=True, text=True, timeout=120)
+
         # Print output for debugging
         print(f"build.py STDOUT:\n{result.stdout}")
         print(f"build.py STDERR:\n{result.stderr}")
-    
+
         if result.returncode != 0:
             pytest.fail(f"build.py failed: {result.stderr}")
 
         # Verify vendored dependencies were created
-        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
+        root_dirs = [
+            d
+            for d in tmp_project.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name not in ["app", "lib"]
+        ]
         print(f"Vendored dependency directories: {[d.name for d in root_dirs]}")
-        
+
         if len(root_dirs) == 0:
             pytest.fail("No vendored dependencies found - vendoring failed")
 
         # Now sync ONLY test group (uvicorn) to verify minified app works standalone
         # This removes fastapi etc. from .venv, so we're forced to use vendored copies
         result = subprocess.run(
-            ["uv", "sync", "--only-group=test"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
+            ["uv", "sync", "--only-group=test"], cwd=tmp_project, capture_output=True, text=True, timeout=120
         )
 
         if result.returncode != 0:
             pytest.fail(f"uv sync failed: {result.stderr}")
-        
+
         # Try to start uvicorn server directly from .venv
         # This should use the vendored fastapi, not the one from .venv (which was removed)
         proc = subprocess.Popen(
@@ -221,38 +208,38 @@ def test_minified_app_runs_with_uvicorn():
             cwd=tmp_project,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
-        
+
         try:
             # Wait for server to start
             time.sleep(3)
-            
+
             # Check if process is still running
             poll = proc.poll()
             if poll is not None:
                 stdout, stderr = proc.communicate()
                 pytest.fail(f"uvicorn failed to start:\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}")
-            
+
             # Test with httpx if available
             try:
                 import httpx
-                
+
                 response = httpx.get("http://127.0.0.1:8999/", timeout=5.0)
                 assert response.status_code == 200
                 assert response.json() == {"success": "Hello, world!"}
-                
+
                 response = httpx.get("http://127.0.0.1:8999/v0/", timeout=5.0)
                 assert response.status_code == 200
                 assert response.json() == {"version": "0"}
-                
+
                 response = httpx.get("http://127.0.0.1:8999/v0/router/", timeout=5.0)
                 assert response.status_code == 200
                 assert response.json() == {"message": "Hello from utils!"}
-                
+
             except ImportError:
                 pytest.skip("httpx not available for HTTP testing")
-                
+
         finally:
             # Clean up
             proc.terminate()
@@ -268,24 +255,24 @@ def test_vendored_deps_options_applied():
     # Check if uv is available
     if not shutil.which("uv"):
         pytest.skip("uv not available")
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_project = setup_test_project_with_uv(tmpdir)
-        
+
         # Run build.py with uv
-        result = subprocess.run(
-            ["uv", "run", "build.py"],
-            cwd=tmp_project,
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
-        
+        result = subprocess.run(["uv", "run", "build.py"], cwd=tmp_project, capture_output=True, text=True, timeout=120)
+
         assert result.returncode == 0, f"build.py failed: {result.stderr}"
-        
+
         # Verify that vendored dependencies were processed
         # (The presence of minified files indicates they were loaded and minified)
-        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
-        
+        root_dirs = [
+            d
+            for d in tmp_project.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and d.name not in ["app", "lib"]
+        ]
+
         # Should have vendored dependencies
-        assert len(root_dirs) > 0, f"Expected vendored dependencies, found: {[d.name for d in tmp_project.iterdir() if d.is_dir()]}"
+        assert len(root_dirs) > 0, (
+            f"Expected vendored dependencies, found: {[d.name for d in tmp_project.iterdir() if d.is_dir()]}"
+        )

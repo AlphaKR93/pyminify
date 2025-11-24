@@ -238,17 +238,17 @@ class ProjectMinifier:
 
                             if target_module:
                                 imported_name = alias_node.name
-                                
+
                                 # Check if the imported name is actually a submodule rather than a binding
                                 # e.g., "from starlette import status" where status is starlette.status
                                 submodule_fullname = f"{target_module_name}.{imported_name}"
                                 is_submodule = submodule_fullname in self.modules
-                                
+
                                 # Skip cross-module reference resolution for submodule imports
                                 # They should be handled by module name obfuscation instead
                                 if is_submodule:
                                     continue
-                                
+
                                 target_binding = None
 
                                 for b in target_module.module.bindings:
@@ -278,10 +278,12 @@ class ProjectMinifier:
                                         target_binding.disallow_rename()
 
                                     alias_node._is_project_reference = True
-                                    
+
                                     # Debug: Verify the flag was set
                                     if self.verbose:
-                                        print(f"  Set _is_project_reference on alias: from {target_module_name} import {alias_node.name}")
+                                        print(
+                                            f"  Set _is_project_reference on alias: from {target_module_name} import {alias_node.name}"
+                                        )
 
                                     for ref_node in list(binding.references):
                                         target_binding.add_reference(ref_node)
@@ -483,7 +485,7 @@ class ProjectMinifier:
                                 target_mod = self.resolve_relative_import(current_mod_name, node.level, node.module)
                             else:
                                 target_mod = node.module
-                            
+
                             original_target_mod = target_mod  # Save original before obfuscation
 
                             if target_mod and target_mod in module_mapping:
@@ -509,7 +511,7 @@ class ProjectMinifier:
                                         else:
                                             # Fallback/no-change if structural divergence detected
                                             pass
-                        
+
                         # Also update imported names if they are submodules that were obfuscated
                         # e.g., "from starlette import status" where status is starlette.status submodule
                         # Use the original module name (before obfuscation) to check submodules
@@ -518,7 +520,7 @@ class ProjectMinifier:
                                 # Skip star imports
                                 if alias.name == "*":
                                     continue
-                                    
+
                                 # Check if this imported name is actually a submodule
                                 submod_name = f"{original_target_mod}.{alias.name}"
                                 if submod_name in module_mapping:
@@ -587,74 +589,79 @@ class ProjectMinifier:
         # Vendor dependencies before loading project if enabled
         # Use a single collector for all packages to avoid duplication
         packages_with_vendoring = [pkg for pkg in self.packages.keys() if pkg.vendor_dependencies]
-        
+
         if packages_with_vendoring:
             if self.verbose:
                 print(f"Vendoring dependencies for {len(packages_with_vendoring)} package(s)")
-            
+
             # Use package manager mode for more reliable dependency discovery
             collector = DependencyCollector(verbose=self.verbose, use_package_manager=True)
-            
+
             # Add all Python files from all packages with vendor_dependencies as entry points
             for package in packages_with_vendoring:
                 for root, _, files in os.walk(package.package_path):
                     for file in files:
-                        if file.endswith('.py'):
+                        if file.endswith(".py"):
                             full_path = os.path.join(root, file)
                             collector.add_entry_point(full_path)
-            
+
             # Collect and copy dependencies to the root_path (common location for all packages)
             # This ensures dependencies are vendored once and shared across all packages
             collector.collect(self.root_path)
-            
+
             # After vendoring, create package configs for vendored dependencies so they're loaded and minified
             # We'll identify them by checking which directories exist at root_path
             existing_package_dirs = {os.path.basename(pkg.package_path) for pkg in self.packages.keys()}
-            
+
             if self.verbose:
                 print(f"Scanning for vendored dependencies at {self.root_path}")
                 print(f"Existing package dirs: {existing_package_dirs}")
-            
+
             for item in os.listdir(self.root_path):
                 item_path = os.path.join(self.root_path, item)
                 # Skip if it's not a directory, or if it's already a package, or starts with __
                 if not os.path.isdir(item_path):
                     continue
-                if item.startswith('__'):
+                if item.startswith("__"):
                     continue
                 if item in existing_package_dirs:
                     if self.verbose:
                         print(f"Skipping {item}: already in packages")
                     continue
-                
+
                 # Check if this is a Python package (has .py files)
                 try:
                     all_files = os.listdir(item_path)
-                    py_files = [f for f in all_files if f.endswith('.py') and os.path.isfile(os.path.join(item_path, f))]
+                    py_files = [
+                        f for f in all_files if f.endswith(".py") and os.path.isfile(os.path.join(item_path, f))
+                    ]
                     has_python = len(py_files) > 0
                     if self.verbose:
-                        print(f"Checking {item}: all_files={all_files[:5]}... py_files={py_files}, has_python={has_python}")
+                        print(
+                            f"Checking {item}: all_files={all_files[:5]}... py_files={py_files}, has_python={has_python}"
+                        )
                 except (OSError, FileNotFoundError) as e:
                     # Skip if we can't read the directory
                     if self.verbose:
                         print(f"Skipping {item}: cannot read directory: {e}")
                     continue
-                
+
                 if has_python:
                     # This is a vendored dependency, create a package config for it
                     # Use vendored_deps_options if provided, otherwise use conservative settings
                     reference_package = packages_with_vendoring[0]
-                    
+
                     # Ensure package_path is absolute to avoid path comparison issues during minification
                     abs_item_path = os.path.abspath(item_path)
-                    
+
                     if self.vendored_deps_options:
                         # Use provided vendored deps options but override package_path and vendor_dependencies
                         from dataclasses import replace
+
                         vendored_pkg = replace(
                             self.vendored_deps_options,
                             package_path=abs_item_path,
-                            vendor_dependencies=False  # Don't vendor again
+                            vendor_dependencies=False,  # Don't vendor again
                         )
                     else:
                         # Use conservative settings for vendored dependencies to avoid breaking them
@@ -682,21 +689,21 @@ class ProjectMinifier:
                             remove_inline_functions=False,  # Keep inline functions in deps
                             remove_typing_variables=False,  # Keep typing vars in deps
                             obfuscate_module_names=False,  # Don't obfuscate vendored dep names
-                            vendor_dependencies=False  # Don't vendor again
+                            vendor_dependencies=False,  # Don't vendor again
                         )
                     self.packages[vendored_pkg] = {}
                     if self.verbose:
                         print(f"Added vendored dependency package: {item}")
-        
+
         self.load_project()
-        
+
         # Debug: Print how many modules were loaded for each package
         if self.verbose:
             print("\n=== Modules loaded per package ===")
             for package, modules in self.packages.items():
                 pkg_name = os.path.basename(package.package_path)
                 print(f"Package {pkg_name}: {len(modules)} modules, mangle={package.mangle}")
-        
+
         self.resolve_cross_module_references()
 
         for package, modules in self.packages.items():
@@ -784,7 +791,7 @@ class ProjectMinifier:
             if package.mangle:
                 if shared_assigner is None:
                     shared_assigner = NameAssigner(name_generator=name_filter(allow_unicode=package.allow_utf8_names))
-                
+
                 for path, module in modules.items():
                     # [Modified] Calculate preserved names for this specific module
                     current_module_name = path_to_name.get(module)
@@ -819,20 +826,22 @@ class ProjectMinifier:
                         # Skip minification for this module due to f-string limitation
                         # Copy the original source instead
                         if self.verbose:
-                            print(f"Warning: Skipping minification for {path} due to f-string limitation, copying original")
+                            print(
+                                f"Warning: Skipping minification for {path} due to f-string limitation, copying original"
+                            )
                         with open(path, "r", encoding="utf-8") as f:
                             minified_code = f.read()
                     else:
                         raise
-                
+
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(minified_code)
-                
+
                 if path != os.path.abspath(output_path):
                     Path(path).unlink()
                 if self.verbose:
                     print(f"Minified: {path} -> {output_path}")
-            
+
             # Debug: Print if a package has no modules to minify
             if self.verbose and len(modules) == 0:
                 pkg_name = os.path.basename(package.package_path)
