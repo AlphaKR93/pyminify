@@ -636,18 +636,21 @@ class ProjectMinifier:
                     # Use vendored_deps_options if provided, otherwise use conservative settings
                     reference_package = packages_with_vendoring[0]
                     
+                    # Ensure package_path is absolute to avoid path comparison issues during minification
+                    abs_item_path = os.path.abspath(item_path)
+                    
                     if self.vendored_deps_options:
                         # Use provided vendored deps options but override package_path and vendor_dependencies
                         from dataclasses import replace
                         vendored_pkg = replace(
                             self.vendored_deps_options,
-                            package_path=item_path,
+                            package_path=abs_item_path,
                             vendor_dependencies=False  # Don't vendor again
                         )
                     else:
                         # Use conservative settings for vendored dependencies to avoid breaking them
                         vendored_pkg = PackageMinifyOptions(
-                            package_path=item_path,
+                            package_path=abs_item_path,
                             remove_annotations=reference_package.remove_annotations,
                             remove_pass=reference_package.remove_pass,
                             remove_literal_statements=False,  # Keep literals in deps
