@@ -6,6 +6,6 @@ from .router import router
 app = FastAPI(version="0")
 app.include_router(router)
 
-@app.get("")
+@app.get("/")
 async def root():
     return {"version": "0"}

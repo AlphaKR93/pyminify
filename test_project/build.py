@@ -1,16 +1,7 @@
 #!/usr/bin/env python
 
-import sys
-import importlib.util
-
 from python_minifier.project_minifier import ProjectMinifier, PackageMinifyOptions
 from python_minifier.transforms.remove_annotations_options import RemoveAnnotationsOptions
-
-# Debug: Check if fastapi is importable
-spec = importlib.util.find_spec('fastapi')
-print(f"DEBUG: fastapi spec = {spec}", file=sys.stderr)
-if spec and spec.origin:
-    print(f"DEBUG: fastapi location = {spec.origin}", file=sys.stderr)
 
 ProjectMinifier(
     ".",
@@ -47,17 +38,16 @@ ProjectMinifier(
         vendor_dependencies=True,
     ),
     python_version=(3, 12),
-    verbose=True,  # Enable verbose output for debugging
     vendored_deps_options=PackageMinifyOptions(
         package_path="",  # Will be overridden
-        remove_literal_statements=False,  # Keep literals to avoid f-string issues
-        hoist_literals=False,  # Don't hoist to avoid issues
-        mangle=True,  # Mangle variable names using shared namespace with project
+        remove_literal_statements=True,
+        hoist_literals=True,
+        mangle=True,
         remove_unused_imports=True,
         remove_environment_checks=True,
-        constant_folding=False,  # Disable to avoid f-string issues
+        constant_folding=True,
         remove_inline_functions=True,
-        obfuscate_module_names=False,  # Keep module structure intact for vendored dependencies
+        obfuscate_module_names=True,
     ),
 )()
 
