@@ -74,9 +74,11 @@ def test_build_script_runs():
         )
         
         # Print output for debugging
+        print(f"build.py STDOUT:\n{result.stdout}")
+        print(f"build.py STDERR:\n{result.stderr}")
+        
         if result.returncode != 0:
-            print(f"build.py STDOUT:\n{result.stdout}")
-            print(f"build.py STDERR:\n{result.stderr}")
+            print(f"build.py failed with return code {result.returncode}")
         
         # Check it completed successfully
         assert result.returncode == 0, f"build.py failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
