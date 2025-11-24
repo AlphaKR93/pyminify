@@ -29,7 +29,7 @@ jobs:
 
       - name: Publish Test Results
         if: (!cancelled())
-        uses: EnricoMi/publish-unit-test-result-action@v2.21.0
+        uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf
         with:
           files: |
             junit/test-results.xml
