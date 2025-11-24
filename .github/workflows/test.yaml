@@ -1,0 +1,26 @@
+name: Test codes
+on:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+          enable-cache: true
+          cache-python: true
+
+      - name: Install dependencies
+        run: uv sync --locked --all-groups --all-extras --no-progress --color never
+
+      - name: Run tests
+        run: pytest -rA --no-fold-skipped --showlocals --tb long --fulltrace --junitxml=junit/test-results.xml --doctest-modules --cov=com --cov-report=xml --cov-report=html
