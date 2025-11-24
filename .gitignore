@@ -2,6 +2,9 @@
 /.venv/
 /dist/
 
+### Tests ###
+/junit/
+
 ### Caches ###
 __pycache__/
 /.ruff_cache/
