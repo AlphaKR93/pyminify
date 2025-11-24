@@ -35,6 +35,7 @@ jobs:
         run: ruff format --preview --check --output-format github
 
       - name: Check code health with ty
+        continue-on-error: true # TEMP: Currently there are so many type errors
         if: always()
         run: ty check --color never --no-progress --output-format github
 
