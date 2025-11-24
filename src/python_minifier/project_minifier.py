@@ -584,7 +584,8 @@ class ProjectMinifier:
             if self.verbose:
                 print(f"Vendoring dependencies for {len(packages_with_vendoring)} package(s)")
             
-            collector = DependencyCollector(verbose=self.verbose)
+            # Use package manager mode for more reliable dependency discovery
+            collector = DependencyCollector(verbose=self.verbose, use_package_manager=True)
             
             # Add all Python files from all packages with vendor_dependencies as entry points
             for package in packages_with_vendoring:

@@ -7,8 +7,10 @@ from __future__ import annotations
 import ast
 import importlib
 import importlib.util
+import json
 import os
 import shutil
+import subprocess
 import sys
 from collections import deque
 
@@ -17,17 +19,20 @@ class DependencyCollector:
     """
     Collects and vendors external dependencies used by a Python project.
     
-    Performs tree shaking by only including modules that are reachable
-    (directly or indirectly) from the project code.
+    Supports two modes:
+    1. AST-based discovery: Parse imports from source files (tree shaking)
+    2. Package manager-based: Use uv/pip to get all installed packages
     """
     
-    def __init__(self, verbose: bool = False):
+    def __init__(self, verbose: bool = False, use_package_manager: bool = True):
         """
         Initialize the dependency collector.
         
         :param verbose: If True, print debug information during collection
+        :param use_package_manager: If True, use uv/pip to discover dependencies (recommended)
         """
         self.verbose = verbose
+        self.use_package_manager = use_package_manager
         self.visited_modules: set[str] = set()
         self.to_process: deque[str] = deque()
         self.module_paths: dict[str, str] = {}  # module_name -> file_path
@@ -92,6 +97,132 @@ class DependencyCollector:
         # Check the root module name (e.g., 'os.path' -> 'os')
         root_module = module_name.split('.')[0]
         return root_module in self.stdlib_modules
+    
+    def _get_installed_packages(self) -> dict[str, str]:
+        """
+        Get all installed packages using pip's internal API or importlib.metadata.
+        
+        :return: Dictionary mapping package names to their locations
+        """
+        packages = {}
+        
+        # Try using importlib.metadata (Python 3.8+)
+        try:
+            if sys.version_info >= (3, 8):
+                import importlib.metadata as metadata
+            else:
+                import importlib_metadata as metadata  # type: ignore
+            
+            distributions = metadata.distributions()
+            for dist in distributions:
+                name = dist.metadata['Name']
+                # Normalize package name (replace hyphens with underscores)
+                normalized_name = name.replace('-', '_').lower()
+                
+                # Try to find the package location
+                try:
+                    # Get top-level modules/packages provided by this distribution
+                    if dist.files:
+                        # Find __init__.py or first .py file to get package location
+                        for file in dist.files:
+                            if file.suffix == '.py':
+                                file_path = dist.locate_file(file)
+                                if file_path.exists():
+                                    # Get the site-packages directory
+                                    site_packages = str(file_path).split(normalized_name)[0]
+                                    pkg_path = os.path.join(site_packages, normalized_name)
+                                    
+                                    # Check if it's a package (directory) or module (file)
+                                    if os.path.isdir(pkg_path):
+                                        init_file = os.path.join(pkg_path, '__init__.py')
+                                        if os.path.exists(init_file):
+                                            packages[normalized_name] = init_file
+                                            break
+                                    elif os.path.isfile(pkg_path + '.py'):
+                                        packages[normalized_name] = pkg_path + '.py'
+                                        break
+                    
+                    # Fallback: try importlib.util.find_spec
+                    if normalized_name not in packages:
+                        spec = importlib.util.find_spec(normalized_name)
+                        if spec and spec.origin and spec.origin not in ('built-in', 'frozen'):
+                            packages[normalized_name] = spec.origin
+                            
+                except Exception:
+                    # If we can't resolve, try with the original name
+                    try:
+                        spec = importlib.util.find_spec(name.lower())
+                        if spec and spec.origin and spec.origin not in ('built-in', 'frozen'):
+                            packages[name.lower()] = spec.origin
+                    except Exception:
+                        pass
+            
+            if self.verbose:
+                print(f"Discovered {len(packages)} packages using importlib.metadata")
+            return packages
+            
+        except ImportError:
+            # importlib.metadata not available, fall back to subprocess
+            pass
+        
+        # Fallback to subprocess if importlib.metadata is not available
+        if self.verbose:
+            print("importlib.metadata not available, trying subprocess...")
+        
+        # Try uv first (faster and more modern)
+        try:
+            result = subprocess.run(
+                ['uv', 'pip', 'list', '--format', 'json'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                package_list = json.loads(result.stdout)
+                for pkg in package_list:
+                    name = pkg['name'].replace('-', '_').lower()
+                    # Try to resolve the package location
+                    try:
+                        spec = importlib.util.find_spec(name)
+                        if spec and spec.origin and spec.origin not in ('built-in', 'frozen'):
+                            packages[name] = spec.origin
+                    except Exception:
+                        pass
+                
+                if self.verbose:
+                    print(f"Discovered {len(packages)} packages using uv")
+                return packages
+        except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+            pass
+        
+        # Fallback to pip subprocess
+        try:
+            result = subprocess.run(
+                ['pip', 'list', '--format', 'json'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                package_list = json.loads(result.stdout)
+                for pkg in package_list:
+                    name = pkg['name'].replace('-', '_').lower()
+                    try:
+                        spec = importlib.util.find_spec(name)
+                        if spec and spec.origin and spec.origin not in ('built-in', 'frozen'):
+                            packages[name] = spec.origin
+                    except Exception:
+                        pass
+                
+                if self.verbose:
+                    print(f"Discovered {len(packages)} packages using pip")
+                return packages
+        except (subprocess.TimeoutExpired, FileNotFoundError, json.JSONDecodeError):
+            pass
+        
+        if self.verbose:
+            print("Warning: Could not discover packages using any method")
+        return packages
         
     def _resolve_module(self, module_name: str) -> str | None:
         """
@@ -261,34 +392,84 @@ class DependencyCollector:
         """
         if self.verbose:
             print(f"Starting dependency collection, target directory: {target_dir}")
+        
+        if self.use_package_manager:
+            # Use package manager to get all installed packages
+            if self.verbose:
+                print("Using package manager to discover dependencies...")
             
-        # Process all entry points and their transitive dependencies
-        while self.to_process:
-            current_file = self.to_process.popleft()
+            installed_packages = self._get_installed_packages()
             
-            if current_file in self.visited_modules:
-                continue
+            # Parse entry points to find which packages are imported
+            # Then recursively check those packages for more imports
+            imported_packages = set()
+            to_check = deque()
+            
+            # Add entry points to check queue
+            for entry_point in self.to_process:
+                to_check.append(entry_point)
+            
+            checked_files = set()
+            while to_check:
+                current_file = to_check.popleft()
                 
-            self.visited_modules.add(current_file)
+                if current_file in checked_files:
+                    continue
+                checked_files.add(current_file)
+                
+                try:
+                    imports = self._extract_imports(current_file)
+                    for imp in imports:
+                        root_module = imp.split('.')[0]
+                        if not self._is_stdlib_module(root_module):
+                            if root_module not in imported_packages:
+                                imported_packages.add(root_module)
+                                # If this package is installed, add its __init__.py to check queue
+                                if root_module in installed_packages:
+                                    to_check.append(installed_packages[root_module])
+                except Exception as e:
+                    if self.verbose:
+                        print(f"  Error parsing {current_file}: {e}")
             
             if self.verbose:
-                print(f"Processing: {current_file}")
-                
-            # Extract imports from this file
-            imports = self._extract_imports(current_file)
+                print(f"Found {len(imported_packages)} imported packages: {sorted(imported_packages)}")
             
-            for module_name in imports:
-                # Skip if already processed
-                if module_name in self.module_paths:
-                    continue
-                    
-                # Skip standard library modules
-                if self._is_stdlib_module(module_name):
+            # Add all installed packages that are imported
+            for pkg_name, pkg_path in installed_packages.items():
+                root_pkg = pkg_name.split('.')[0]
+                if root_pkg in imported_packages:
+                    self.module_paths[pkg_name] = pkg_path
                     if self.verbose:
-                        print(f"  Skipping stdlib module: {module_name}")
+                        print(f"  Including package: {pkg_name}")
+        else:
+            # Original AST-based recursive discovery
+            # Process all entry points and their transitive dependencies
+            while self.to_process:
+                current_file = self.to_process.popleft()
+                
+                if current_file in self.visited_modules:
                     continue
                     
-                # Try to resolve the module
+                self.visited_modules.add(current_file)
+                
+                if self.verbose:
+                    print(f"Processing: {current_file}")
+                    
+                # Extract imports from this file
+                imports = self._extract_imports(current_file)
+                
+                for module_name in imports:
+                    # Skip if already processed
+                    if module_name in self.module_paths:
+                        continue
+                        
+                    # Skip standard library modules
+                    if self._is_stdlib_module(module_name):
+                        if self.verbose:
+                            print(f"  Skipping stdlib module: {module_name}")
+                        continue
+                        
+                    # Try to resolve the module
                 module_path = self._resolve_module(module_name)
                 
                 if module_path is None:
