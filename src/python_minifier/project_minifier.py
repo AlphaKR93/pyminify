@@ -808,14 +808,6 @@ class ProjectMinifier:
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(minified_code)
                 
-                # Debug: Show path comparison for vendored dependencies
-                if self.verbose and 'fastapi/__init__.py' in path:
-                    print(f"DEBUG path comparison:")
-                    print(f"  path: {path}")
-                    print(f"  output_path: {output_path}")
-                    print(f"  os.path.abspath(output_path): {os.path.abspath(output_path)}")
-                    print(f"  Will unlink: {path != os.path.abspath(output_path)}")
-                
                 if path != os.path.abspath(output_path):
                     Path(path).unlink()
                 if self.verbose:

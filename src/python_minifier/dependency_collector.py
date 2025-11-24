@@ -460,7 +460,14 @@ class DependencyCollector:
                                         if file.endswith('.py'):
                                             full_path = os.path.join(root, file)
                                             if full_path not in checked_files:
-                                                to_check.append(full_path)
+                                                # Skip if the file is in an excluded package directory
+                                                skip_file = False
+                                                for excl in self.excluded_packages:
+                                                    if os.path.sep + excl + os.path.sep in full_path or full_path.endswith(os.path.sep + excl):
+                                                        skip_file = True
+                                                        break
+                                                if not skip_file:
+                                                    to_check.append(full_path)
                 except Exception as e:
                     if self.verbose:
                         print(f"  Error parsing {current_file}: {e}")
