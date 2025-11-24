@@ -2,3 +2,6 @@ root = true
 
 [*.{yml,yaml}]
 indent_size = 2
+
+[CODEOWNERS]
+indent_style = tab
