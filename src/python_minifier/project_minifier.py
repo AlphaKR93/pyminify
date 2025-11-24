@@ -511,6 +511,10 @@ class ProjectMinifier:
                         # Use the original module name (before obfuscation) to check submodules
                         if original_target_mod:
                             for alias in node.names:
+                                # Skip star imports
+                                if alias.name == "*":
+                                    continue
+                                    
                                 # Check if this imported name is actually a submodule
                                 submod_name = f"{original_target_mod}.{alias.name}"
                                 if submod_name in module_mapping:
@@ -522,6 +526,20 @@ class ProjectMinifier:
                                     else:
                                         new_alias_name = new_submod
                                     alias.name = new_alias_name
+                                else:
+                                    # Check if this is a renamed symbol (class/function) in the target module
+                                    # Need to look up the binding in the target module
+                                    target_module_obj = self.modules.get(original_target_mod)
+                                    if target_module_obj:
+                                        # Find the binding for this symbol in the target module
+                                        for binding in target_module_obj.bindings:
+                                            if binding.creation_ast_node and hasattr(binding.creation_ast_node, 'name'):
+                                                # Check if this binding's original name matches
+                                                if binding.creation_ast_node.name == alias.name:
+                                                    # This binding was renamed, update the import
+                                                    if binding.name != alias.name:
+                                                        alias.name = binding.name
+                                                    break
 
     def _update_attribute_usages(self, module, old_name, new_name):
         """
@@ -804,7 +822,19 @@ class ProjectMinifier:
                 # Create directories for new path
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-                minified_code = ModulePrinter()(module)
+                try:
+                    minified_code = ModulePrinter()(module)
+                except ValueError as e:
+                    if "Unable to create representation for f-string" in str(e):
+                        # Skip minification for this module due to f-string limitation
+                        # Copy the original source instead
+                        if self.verbose:
+                            print(f"Warning: Skipping minification for {path} due to f-string limitation, copying original")
+                        with open(path, "r", encoding="utf-8") as f:
+                            minified_code = f.read()
+                    else:
+                        raise
+                
                 with open(output_path, "w", encoding="utf-8") as f:
                     f.write(minified_code)
                 

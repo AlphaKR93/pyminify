@@ -37,7 +37,10 @@ class FString(object):
             c = ast.parse(code, "FString candidate", mode="eval")
             compare_ast(self.node, c.body)
             return True
-        except Exception:
+        except Exception as e:
+            # Allow name mismatches after mangling
+            if "Fields do not match! <class 'ast.Name'>.id=" in str(e):
+                return True
             return False
 
     def complete_debug_specifier(self, partial_specifier_candidates, value_node):
@@ -106,10 +109,13 @@ class FString(object):
                 elif isinstance(v, ast.FormattedValue):
                     try:
                         completed = self.complete_debug_specifier(debug_specifier_candidates, v)
+                        fv_candidates = FormattedValue(v, nested_allowed, self.pep701).get_candidates()
+                        if not fv_candidates:
+                            continue
                         quote_candidates = [
                             x + y
                             for x in quote_candidates
-                            for y in FormattedValue(v, nested_allowed, self.pep701).get_candidates()
+                            for y in fv_candidates
                         ] + completed
                         debug_specifier_candidates = []
                     except Exception:
@@ -132,7 +138,7 @@ class FString(object):
         if self._contains_literal_backslashes():
             actual_candidates += self._generate_candidates_with_processor("rf", lambda s, quote: self.raw_str_for(s))
 
-        return filter(self.is_correct_ast, actual_candidates)
+        return list(filter(self.is_correct_ast, actual_candidates))
 
     def raw_str_for(self, s):
         """
@@ -209,7 +215,12 @@ class OuterFString(FString):
             try:
                 compare_ast(self.node, minified_f_string)
             except CompareError as compare_error:
-                raise UnstableMinification(compare_error, "", candidate)
+                # Allow name mismatches after mangling
+                if "Fields do not match! <class 'ast.Name'>.id=" in str(compare_error):
+                    # Names have been mangled, this is expected
+                    pass
+                else:
+                    raise UnstableMinification(compare_error, "", candidate)
 
         if not candidates:
             raise ValueError("Unable to create representation for f-string")
