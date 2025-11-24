@@ -602,10 +602,20 @@ class ProjectMinifier:
             # We'll identify them by checking which directories exist at root_path
             existing_package_dirs = {os.path.basename(pkg.package_path) for pkg in self.packages.keys()}
             
+            if self.verbose:
+                print(f"Scanning for vendored dependencies at {self.root_path}")
+                print(f"Existing package dirs: {existing_package_dirs}")
+            
             for item in os.listdir(self.root_path):
                 item_path = os.path.join(self.root_path, item)
                 # Skip if it's not a directory, or if it's already a package, or starts with __
-                if not os.path.isdir(item_path) or item in existing_package_dirs or item.startswith('__'):
+                if not os.path.isdir(item_path):
+                    continue
+                if item.startswith('__'):
+                    continue
+                if item in existing_package_dirs:
+                    if self.verbose:
+                        print(f"Skipping {item}: already in packages")
                     continue
                 
                 # Check if this is a Python package (has .py files)
@@ -613,7 +623,12 @@ class ProjectMinifier:
                     has_python = any(f.endswith('.py') for f in os.listdir(item_path) if os.path.isfile(os.path.join(item_path, f)))
                 except (OSError, FileNotFoundError):
                     # Skip if we can't read the directory
+                    if self.verbose:
+                        print(f"Skipping {item}: cannot read directory")
                     continue
+                
+                if self.verbose:
+                    print(f"Checking {item}: has_python={has_python}")
                 
                 if has_python:
                     # This is a vendored dependency, create a package config for it
