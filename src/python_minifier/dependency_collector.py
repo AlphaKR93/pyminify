@@ -331,46 +331,36 @@ class DependencyCollector:
             distributions = metadata.distributions()
             for dist in distributions:
                 name = dist.metadata["Name"]
-                # Normalize package name (replace hyphens with underscores)
-                normalized_name = name.replace("-", "_").lower()
-
+               
                 # Try to find the package location
                 try:
-                    # Get top-level modules/packages provided by this distribution
-                    if dist.files:
-                        # Find __init__.py or first .py file to get package location
-                        for file in dist.files:
-                            if file.suffix == ".py":
-                                file_path = dist.locate_file(file)
-                                if file_path.exists():
-                                    # Get the site-packages directory
-                                    site_packages = str(file_path).split(normalized_name)[0]
-                                    pkg_path = os.path.join(site_packages, normalized_name)
-
-                                    # Check if it's a package (directory) or module (file)
-                                    if os.path.isdir(pkg_path):
-                                        init_file = os.path.join(pkg_path, "__init__.py")
-                                        if os.path.exists(init_file):
-                                            packages[normalized_name] = init_file
-                                            break
-                                    elif os.path.isfile(pkg_path + ".py"):
-                                        packages[normalized_name] = pkg_path + ".py"
-                                        break
-
-                    # Fallback: try importlib.util.find_spec
-                    if normalized_name not in packages:
-                        spec = importlib.util.find_spec(normalized_name)
-                        if spec and spec.origin and spec.origin not in ("built-in", "frozen"):
-                            packages[normalized_name] = spec.origin
-
-                except Exception:
-                    # If we can't resolve, try with the original name
+                    # First, try to get top_level.txt which lists the actual importable module names
+                    top_level_modules = []
                     try:
-                        spec = importlib.util.find_spec(name.lower())
-                        if spec and spec.origin and spec.origin not in ("built-in", "frozen"):
-                            packages[name.lower()] = spec.origin
+                        top_level_txt = dist.read_text('top_level.txt')
+                        if top_level_txt:
+                            top_level_modules = [line.strip() for line in top_level_txt.strip().split('\n') if line.strip()]
                     except Exception:
                         pass
+                    
+                    # If no top_level.txt, fall back to normalized distribution name
+                    if not top_level_modules:
+                        top_level_modules = [name.replace("-", "_").lower()]
+                    
+                    # Try to locate each top-level module
+                    for module_name in top_level_modules:
+                        if module_name in packages:
+                            continue  # Already found
+                            
+                        try:
+                            spec = importlib.util.find_spec(module_name)
+                            if spec and spec.origin and spec.origin not in ("built-in", "frozen"):
+                                packages[module_name] = spec.origin
+                        except Exception:
+                            pass
+
+                except Exception:
+                    pass
 
             if self.verbose:
                 print(f"Discovered {len(packages)} packages using importlib.metadata")
