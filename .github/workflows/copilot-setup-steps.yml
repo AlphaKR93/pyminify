@@ -24,6 +24,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v5
 
+      - name: Disallow editing of test_project
+        run: git update-index --assume-unchanged test_project/
+
       - name: Setup uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -33,6 +36,3 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --locked --all-groups --all-extras
-
-      - name: Disallow editing of test_project
-        run: git update-index --assume-unchanged test_project/**
