@@ -41,12 +41,20 @@ ProjectMinifier(
         package_path="",  # Will be overridden
         remove_literal_statements=True,
         hoist_literals=True,
-        mangle=True,
-        remove_unused_imports=True,
+        remove_annotations=RemoveAnnotationsOptions(
+            remove_variable_annotations=True,
+            remove_return_annotations=True,
+            remove_argument_annotations=False,
+            remove_class_attribute_annotations=False,
+        ),
+        mangle=False,                   # FIXME
+        remove_unused_imports=False,    # FIXME
+        remove_debug=True,
         remove_environment_checks=True,
         constant_folding=True,
         remove_inline_functions=True,
-        obfuscate_module_names=True,
+        obfuscate_module_names=False,   # FIXME
+        remove_typing_variables=False,  # FIXME
     ),
     python_version=(3, 12),
 )()
