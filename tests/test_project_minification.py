@@ -29,10 +29,10 @@ def setup_test_project_with_uv(tmpdir):
     pyproject_content = pyproject_content.replace('{ path = "../" }', f'{{ path = "{tmp_pyminify}" }}')
     pyproject_path.write_text(pyproject_content)
     
-    # Sync ALL dependencies including build group
+    # Sync ALL dependencies including build group using uv
     # - Regular dependencies (fastapi, httpx, orjson, vercel) 
     # - Build group dependencies (pyminify)
-    # This ensures fastapi et al are available when build.py runs, so they can be vendored
+    # This ensures fastapi et al are available when build.py runs via uv, so they can be vendored
     # The test group (uvicorn) is installed separately after minification to verify vendoring worked
     sync_result = subprocess.run(
         ["uv", "sync", "--group", "build"],
@@ -92,8 +92,8 @@ def test_build_script_runs():
         root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
         print(f"Potential vendored dependency directories: {[d.name for d in root_dirs]}")
         
-        # For now, just verify build succeeded - vendoring might not work if dependencies aren't available
-        # assert len(root_dirs) > 0, f"No vendored dependencies found. Directories: {all_dirs}"
+        # Verify vendored dependencies were created
+        assert len(root_dirs) > 0, f"No vendored dependencies found. Directories: {all_dirs}"
         
 
 def test_vendored_dependencies_are_minified():
@@ -168,13 +168,17 @@ def test_minified_app_structure():
 
 def test_minified_app_runs_with_uvicorn():
     """Test that the minified app can run with uvicorn."""
+    # Check if uv is available
+    if not shutil.which("uv"):
+        pytest.skip("uv not available")
+    
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             tmp_project = setup_test_project_with_uv(tmpdir)
         except RuntimeError as e:
             pytest.skip(str(e))
         
-        # Run build.py with uv
+        # Run build.py with uv - this should vendor fastapi and other dependencies
         result = subprocess.run(
             ["uv", "run", "build.py"],
             cwd=tmp_project,
@@ -182,11 +186,23 @@ def test_minified_app_runs_with_uvicorn():
             text=True,
             timeout=120
         )
+        
+        # Print output for debugging
+        print(f"build.py STDOUT:\n{result.stdout}")
+        print(f"build.py STDERR:\n{result.stderr}")
     
         if result.returncode != 0:
-            pytest.skip(f"build.py failed: {result.stderr}")
+            pytest.fail(f"build.py failed: {result.stderr}")
 
-        # Sync dependencies
+        # Verify vendored dependencies were created
+        root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith('.') and d.name not in ['app', 'lib']]
+        print(f"Vendored dependency directories: {[d.name for d in root_dirs]}")
+        
+        if len(root_dirs) == 0:
+            pytest.fail("No vendored dependencies found - vendoring failed")
+
+        # Now sync ONLY test group (uvicorn) to verify minified app works standalone
+        # This removes fastapi etc. from .venv, so we're forced to use vendored copies
         result = subprocess.run(
             ["uv", "sync", "--only-group=test"],
             cwd=tmp_project,
@@ -196,11 +212,12 @@ def test_minified_app_runs_with_uvicorn():
         )
 
         if result.returncode != 0:
-            pytest.fail("uv sync failed: {result.stderr}")
+            pytest.fail(f"uv sync failed: {result.stderr}")
         
-        # Try to start uvicorn server using uv run
+        # Try to start uvicorn server directly from .venv
+        # This should use the vendored fastapi, not the one from .venv (which was removed)
         proc = subprocess.Popen(
-            [".venv/bin/uvicorn", "app.app:app", "--host", "127.0.0.1", "--port", "8999"],
+            [str(tmp_project / ".venv" / "bin" / "uvicorn"), "app.app:app", "--host", "127.0.0.1", "--port", "8999"],
             cwd=tmp_project,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
