@@ -676,6 +676,14 @@ class ProjectMinifier:
                         print(f"Added vendored dependency package: {item}")
         
         self.load_project()
+        
+        # Debug: Print how many modules were loaded for each package
+        if self.verbose:
+            print("\n=== Modules loaded per package ===")
+            for package, modules in self.packages.items():
+                pkg_name = os.path.basename(package.package_path)
+                print(f"Package {pkg_name}: {len(modules)} modules, mangle={package.mangle}")
+        
         self.resolve_cross_module_references()
 
         for package, modules in self.packages.items():
@@ -798,5 +806,10 @@ class ProjectMinifier:
                     Path(path).unlink()
                 if self.verbose:
                     print(f"Minified: {path} -> {output_path}")
+            
+            # Debug: Print if a package has no modules to minify
+            if self.verbose and len(modules) == 0:
+                pkg_name = os.path.basename(package.package_path)
+                print(f"Warning: Package {pkg_name} has no modules to minify")
 
     __call__ = minify
