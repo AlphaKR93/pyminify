@@ -30,6 +30,7 @@ Z/
 fastapi/
 starlette/
 httpx/
+httpcore/
 orjson/
 requests/
 urllib3/
@@ -44,7 +45,11 @@ idna/
 pydantic/
 pydantic_core/
 sniffio/
+typing_extensions.py
 typing_extensions/
+annotated_doc/
+annotated_types/
+typing_inspection/
 
 # Python cache
 __pycache__/

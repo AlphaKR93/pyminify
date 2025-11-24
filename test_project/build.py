@@ -50,12 +50,12 @@ ProjectMinifier(
     verbose=True,  # Enable verbose output for debugging
     vendored_deps_options=PackageMinifyOptions(
         package_path="",  # Will be overridden
-        remove_literal_statements=True,
-        hoist_literals=True,
+        remove_literal_statements=False,  # Keep literals to avoid f-string issues
+        hoist_literals=False,  # Don't hoist to avoid issues
         mangle=True,  # Mangle variable names using shared namespace with project
         remove_unused_imports=True,
         remove_environment_checks=True,
-        constant_folding=True,
+        constant_folding=False,  # Disable to avoid f-string issues
         remove_inline_functions=True,
         obfuscate_module_names=False,  # Keep module structure intact for vendored dependencies
     ),
