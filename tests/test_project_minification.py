@@ -52,7 +52,7 @@ def test_test_project_exists():
     """Verify test_project directory exists."""
     assert TEST_PROJECT_DIR.exists(), f"test_project directory not found at {TEST_PROJECT_DIR}"
     assert (TEST_PROJECT_DIR / "app").exists()
-    assert (TEST_PROJECT_DIR / "lib").exists()
+    # lib directory was removed in simplified test_project
     assert (TEST_PROJECT_DIR / "build.py").exists()
 
 
@@ -149,14 +149,11 @@ def test_minified_app_structure():
 
         # Check app files exist (note: files may be obfuscated)
         assert (tmp_project / "app" / "app.py").exists()
-        # v0 module gets obfuscated, so we check for any obfuscated directories
-        obfuscated_dirs = [
-            d for d in (tmp_project / "app").iterdir() if d.is_dir() and d.name not in ["__pycache__", "v0"]
-        ]
-        assert len(obfuscated_dirs) > 0, "Expected at least one obfuscated subdirectory in app/"
-        # Check lib still exists (it gets obfuscated at root level)
+        # Simplified structure - just app/ and vendored dependencies at root
+        # Check that vendored dependencies exist at root level
         root_dirs = [d for d in tmp_project.iterdir() if d.is_dir() and not d.name.startswith(".")]
-        assert len(root_dirs) > 2, f"Expected multiple directories at root, found: {[d.name for d in root_dirs]}"
+        # Should have at least app/ and some vendored dependencies (fastapi, starlette, etc.)
+        assert len(root_dirs) >= 3, f"Expected at least app + vendored deps at root, found: {[d.name for d in root_dirs]}"
 
 
 def test_minified_app_runs_with_uvicorn():
