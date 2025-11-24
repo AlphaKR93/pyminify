@@ -297,20 +297,29 @@ class DependencyCollector:
                     continue
                 
                 # Skip if the module is in the target directory (already vendored or part of project)
+                # but exclude common virtual environment directories
                 try:
                     # Check if module_path is within target_dir by comparing absolute paths
                     abs_module_path = os.path.abspath(module_path)
                     abs_target_dir = os.path.abspath(target_dir)
                     
-                    # Use os.path.commonpath to find common prefix
-                    common = os.path.commonpath([abs_module_path, abs_target_dir])
-                    
-                    # Module is inside target_dir if common path equals target_dir
-                    # and module_path starts with target_dir
-                    if common == abs_target_dir and abs_module_path.startswith(abs_target_dir + os.sep):
-                        if self.verbose:
-                            print(f"  Skipping project module: {module_name}")
-                        continue
+                    # Check if module is inside target_dir
+                    if abs_module_path.startswith(abs_target_dir + os.sep):
+                        # Get the relative path from target_dir
+                        rel_path = os.path.relpath(abs_module_path, abs_target_dir)
+                        
+                        # Check if it's in a virtual environment or cache directory
+                        # These should NOT be considered project modules
+                        venv_dirs = {'.venv', 'venv', '__pycache__', '.tox', '.nox', 
+                                    'site-packages', 'dist-packages', '.eggs'}
+                        first_component = rel_path.split(os.sep)[0]
+                        
+                        # If the first directory component is NOT a venv/cache dir,
+                        # then it's a project module
+                        if first_component not in venv_dirs:
+                            if self.verbose:
+                                print(f"  Skipping project module: {module_name}")
+                            continue
                 except ValueError:
                     # Paths are on different drives or one is relative
                     pass

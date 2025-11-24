@@ -709,9 +709,14 @@ class ProjectMinifier:
         # We need this because 'modules' dict here is path->module, but we track names by dotted name in self.modules
         path_to_name = {v.module: k for k, v in self.modules.items()}
 
+        # Create a single shared NameAssigner for all packages with mangling enabled
+        # This ensures vendored dependencies and project code use the same name mappings
+        shared_assigner = None
         for package, modules in self.packages.items():
-            assigner = NameAssigner(name_generator=name_filter(allow_unicode=package.allow_utf8_names))
             if package.mangle:
+                if shared_assigner is None:
+                    shared_assigner = NameAssigner(name_generator=name_filter(allow_unicode=package.allow_utf8_names))
+                
                 for path, module in modules.items():
                     # [Modified] Calculate preserved names for this specific module
                     current_module_name = path_to_name.get(module)
@@ -719,7 +724,7 @@ class ProjectMinifier:
                         package.preserved_names, current_module_name
                     )
 
-                    assigner(module, prefix_globals=False, reserved_globals=module_specific_preserved)
+                    shared_assigner(module, prefix_globals=False, reserved_globals=module_specific_preserved)
 
         for package, modules in self.packages.items():
             for path, module in modules.items():

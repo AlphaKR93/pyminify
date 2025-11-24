@@ -52,12 +52,12 @@ ProjectMinifier(
         package_path="",  # Will be overridden
         remove_literal_statements=True,
         hoist_literals=True,
-        mangle=True,
+        mangle=True,  # Mangle variable names using shared namespace with project
         remove_unused_imports=True,
         remove_environment_checks=True,
         constant_folding=True,
         remove_inline_functions=True,
-        obfuscate_module_names=True,
+        obfuscate_module_names=False,  # DON'T obfuscate - breaks internal imports in vendored packages
     ),
 )()
 
