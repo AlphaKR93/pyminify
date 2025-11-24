@@ -655,13 +655,17 @@ class ProjectMinifier:
                     abs_item_path = os.path.abspath(item_path)
 
                     if self.vendored_deps_options:
-                        # Use provided vendored deps options but override package_path and vendor_dependencies
+                        # Use provided vendored deps options but override certain settings for safety
                         from dataclasses import replace
 
                         vendored_pkg = replace(
                             self.vendored_deps_options,
                             package_path=abs_item_path,
                             vendor_dependencies=False,  # Don't vendor again
+                            mangle=False,  # Force disable mangling for vendored deps
+                            obfuscate_module_names=False,  # Force disable module name obfuscation
+                            remove_typing_variables=False,  # Force keep typing vars (__all__)
+                            remove_unused_imports=False,  # Force keep all imports
                         )
                     else:
                         # Use conservative settings for vendored dependencies to avoid breaking them
