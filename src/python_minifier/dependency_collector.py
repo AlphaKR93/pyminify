@@ -37,6 +37,17 @@ class DependencyCollector:
         self.to_process: deque[str] = deque()
         self.module_paths: dict[str, str] = {}  # module_name -> file_path
         
+        # Packages that should never be vendored (dev tools, testing, etc.)
+        self.excluded_packages = {
+            'pytest', 'pytest_cov', 'coverage', 'nose', 'unittest2', 'mock',
+            'debugpy', 'pydevd', 'pydev', 'pdb', 'ipdb', 'pudb',
+            'mypy', 'pyright', 'basedpyright', 'pylint', 'flake8', 'ruff', 'black',
+            'setuptools', 'pip', 'wheel', 'build', 'twine',
+            'sphinx', 'readthedocs', 'mkdocs',
+            'jupyter', 'ipython', 'notebook',
+            '_pydev', '_pydevd', 'pydev_ipython', 'pydev_jupyter',
+        }
+        
         # Use sys.stdlib_module_names for Python 3.10+ (recommended: Python 3.12+)
         # For older Python versions, basic stdlib detection via importlib will still work
         if hasattr(sys, 'stdlib_module_names'):
@@ -421,20 +432,35 @@ class DependencyCollector:
                     imports = self._extract_imports(current_file)
                     for imp in imports:
                         root_module = imp.split('.')[0]
-                        if not self._is_stdlib_module(root_module):
-                            if root_module not in imported_packages:
-                                imported_packages.add(root_module)
-                                # If this package is installed, add ALL its Python files to check queue
-                                if root_module in installed_packages:
-                                    pkg_path = installed_packages[root_module]
-                                    pkg_dir = os.path.dirname(pkg_path)
-                                    # Walk the package directory to find all Python files
-                                    for root, _, files in os.walk(pkg_dir):
-                                        for file in files:
-                                            if file.endswith('.py'):
-                                                full_path = os.path.join(root, file)
-                                                if full_path not in checked_files:
-                                                    to_check.append(full_path)
+                        # Skip stdlib and excluded packages
+                        if self._is_stdlib_module(root_module):
+                            continue
+                        if root_module in self.excluded_packages:
+                            continue
+                            
+                        if root_module not in imported_packages:
+                            imported_packages.add(root_module)
+                            # If this package is installed, add ALL its Python files to check queue
+                            # But skip if it's an excluded package
+                            if root_module in installed_packages and root_module not in self.excluded_packages:
+                                pkg_path = installed_packages[root_module]
+                                pkg_dir = os.path.dirname(pkg_path)
+                                # Walk the package directory to find all Python files
+                                for root, _, files in os.walk(pkg_dir):
+                                    # Skip directories of excluded packages
+                                    skip_dir = False
+                                    for excl in self.excluded_packages:
+                                        if excl in root:
+                                            skip_dir = True
+                                            break
+                                    if skip_dir:
+                                        continue
+                                        
+                                    for file in files:
+                                        if file.endswith('.py'):
+                                            full_path = os.path.join(root, file)
+                                            if full_path not in checked_files:
+                                                to_check.append(full_path)
                 except Exception as e:
                     if self.verbose:
                         print(f"  Error parsing {current_file}: {e}")
@@ -445,10 +471,17 @@ class DependencyCollector:
             # Add all installed packages that are imported
             for pkg_name, pkg_path in installed_packages.items():
                 root_pkg = pkg_name.split('.')[0]
-                if root_pkg in imported_packages:
-                    self.module_paths[pkg_name] = pkg_path
+                # Skip if not imported or if it's an excluded package
+                if root_pkg not in imported_packages:
+                    continue
+                if root_pkg in self.excluded_packages or pkg_name in self.excluded_packages:
                     if self.verbose:
-                        print(f"  Including package: {pkg_name}")
+                        print(f"  Skipping excluded package: {pkg_name}")
+                    continue
+                    
+                self.module_paths[pkg_name] = pkg_path
+                if self.verbose:
+                    print(f"  Including package: {pkg_name}")
         else:
             # Original AST-based recursive discovery
             # Process all entry points and their transitive dependencies
