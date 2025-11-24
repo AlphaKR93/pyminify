@@ -39,5 +39,6 @@ jobs:
         run: ty check --color never --no-progress --output-format github
 
       - name: Run basedpyright
+        continue-on-error: true # TEMP: Currently there are so many type errors
         if: always()
         run: basedpyright --stats

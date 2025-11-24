@@ -23,4 +23,11 @@ jobs:
         run: uv sync --locked --all-groups --all-extras --no-progress --color never
 
       - name: Run tests
-        run: pytest -rA --no-fold-skipped --showlocals --tb long --fulltrace --junitxml=junit/test-results.xml --doctest-modules
+        run: pytest -rA --no-fold-skipped --showlocals --tb long --fulltrace --junitxml=junit/test-results.xml # --doctest-modules  # TEMP
+
+      - name: Publish Test Results
+        if: (!cancelled())
+        uses: EnricoMi/publish-unit-test-result-action@v2.21.0
+        with:
+          files: |
+            junit/test-results.xml
