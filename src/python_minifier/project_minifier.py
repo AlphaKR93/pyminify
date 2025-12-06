@@ -73,14 +73,14 @@ class ProjectMinifier:
         root_path: str,
         /,
         *packages: PackageMinifyOptions,
-        python_version: tuple[int, int, int, str, int] = sys.version_info,
+        python_version: "sys._version_info" = sys.version_info,
         verbose: bool = False,
     ):
         self.python_version = python_version
         self.verbose = verbose
         self.root_path = root_path
         self.packages = {
-            PackageMinifyOptions(**(package.__dict__ | {"package_path": os.path.abspath(package.package_path)})): {}
+            PackageMinifyOptions(**(package.__dict__ | {"package_path": os.path.abspath(os.path.join(root_path, package.package_path))})): {}
             for package in packages
         }
 
